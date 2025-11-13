@@ -8,5 +8,15 @@
   { "user_id": 7, "username": "Joe Rantanen", "email": "joe.r@example.com" },
   { "user_id": 8, "username": "Viivi Laaksonen", "email": "viivi.l@example.com" },
   { "user_id": 9, "username": "Jukka Mäkinen", "email": "jukka.m@example.com" },
-  { "user_id": 10, "username": "Puu Saarinen", "email": "puu.s@example.com" }
+  { "user_id": 10, "username": "Puu Saarinen", "email": "puu.s@example.com" },
+  { "user_id": 11, "username": "Elias Virtanen", "email": "elias.v@example.com" },
+  { "user_id": 12, "username": "Emma Nieminen", "email": "emma.n@example.com" },
+  { "user_id": 13, "username": "Oliver Laine", "email": "oliver.l@example.com" },
+  { "user_id": 14, "username": "Aino Heikkinen", "email": "aino.h@example.com" },
+  { "user_id": 15, "username": "Eetu Järvinen", "email": "eetu.j@example.com" },
+  { "user_id": 16, "username": "Sofia Hämäläinen", "email": "sofia.h@example.com" },
+  { "user_id": 17, "username": "Leo Koskinen", "email": "leo.k@example.com" },
+  { "user_id": 18, "username": "Venla Lehto", "email": "venla.l@example.com" },
+  { "user_id": 19, "username": "Eemeli Saari", "email": "eemeli.s@example.com" },
+  { "user_id": 20, "username": "Iida Rantanen", "email": "iida.r@example.com" }
 ]
