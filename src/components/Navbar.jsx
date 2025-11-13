@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
+import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
 
 export default function Navbar() {
+  const { cartCount } = useCart();
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
       <div className="container-fluid">
@@ -33,30 +35,44 @@ export default function Navbar() {
                 to="/"
                 end
                 className={({ isActive }) =>
-                  "nav-link" + (isActive ? " active fw-bold text-info" : "")
+                  `nav-link d-flex align-items-center gap-2 
+                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
                 }
               >
-                <i className="bi bi-house-door"></i> Home
+                <i className="bi bi-house-door fs-5"></i>
+                <span>Home</span>
               </NavLink>
             </li>
             <li className="nav-item">
               <NavLink
                 to="/login"
                 className={({ isActive }) =>
-                  "nav-link" + (isActive ? " active fw-bold text-info" : "")
+                  `nav-link d-flex align-items-center gap-2 
+                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
                 }
               >
-                <i className="bi bi-box-arrow-in-right"></i> Login
+                <i className="bi bi-box-arrow-in-right fs-5"></i>
+                <span>Login</span>
               </NavLink>
             </li>
             <li className="nav-item">
               <NavLink
                 to="/cart"
                 className={({ isActive }) =>
-                  "nav-link" + (isActive ? " active fw-bold text-info" : "")
+                  `nav-link position-relative d-flex align-items-center gap-2 
+                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
                 }
               >
-                <i className="bi bi-cart"></i> Cart
+                <div className="position-relative">
+                  <i className="bi bi-cart3 fs-5"></i>
+                  {cartCount > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
+                      {cartCount > 9 ? '9+' : cartCount}
+                      <span className="visually-hidden">items in cart</span>
+                    </span>
+                  )}
+                </div>
+                <span>Cart</span>
               </NavLink>
             </li>
           </ul>
