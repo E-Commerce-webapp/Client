@@ -1,0 +1,27 @@
+[
+  {
+    "category_id": 1,
+    "category_name": "Clothing",
+    "description": "Apparel and accessories for men and women, including jackets, shirts, and shoes."
+  },
+  {
+    "category_id": 2,
+    "category_name": "Groceries",
+    "description": "Everyday food items and beverages such as coffee, fruits, and packaged goods."
+  },
+  {
+    "category_id": 3,
+    "category_name": "Electronics",
+    "description": "Devices and gadgets including phones, speakers, and smart accessories."
+  },
+  {
+    "category_id": 4,
+    "category_name": "Home & Kitchen",
+    "description": "Products for home use, cooking, and decoration."
+  },
+  {
+    "category_id": 5,
+    "category_name": "Beauty & Health",
+    "description": "Skincare, personal care, and wellness products."
+  }
+]
