@@ -4,6 +4,9 @@ import SearchBar from "./SearchBar";
 
 export default function Navbar() {
   const { cartCount } = useCart();
+  const token = localStorage.getItem("token");
+  const loggedIn = !!token;
+  const accountLink = loggedIn ? "/profile" : "/login";
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
       <div className="container-fluid">
@@ -45,14 +48,14 @@ export default function Navbar() {
             </li>
             <li className="nav-item">
               <NavLink
-                to="/login"
+                to={accountLink}
                 className={({ isActive }) =>
                   `nav-link d-flex align-items-center gap-2 
                   ${isActive ? 'active fw-bold text-info' : 'text-light'}`
                 }
               >
-                <i className="bi bi-box-arrow-in-right fs-5"></i>
-                <span>Login</span>
+                {loggedIn ? (<i className="bi bi-person-fill fs-5"></i>) : (<i className="bi bi-person fs-5"></i>)}
+                <span>{loggedIn ? 'Account' : 'Login'}</span>
               </NavLink>
             </li>
             <li className="nav-item">
