@@ -43,6 +43,12 @@ export default function ProductCard({ product }) {
           </p>
           <div className="mt-auto">
             <p className="fw-bold h5 mb-0">${product.price.toFixed(2)}</p>
+            {product.formatted_date && (
+              <small className="text-muted">
+                <i className="bi bi-clock me-1"></i>
+                {product.formatted_date}
+              </small>
+            )}
           </div>
         </div>
       </div>

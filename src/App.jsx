@@ -8,6 +8,7 @@ import ProductDetail from "./pages/ProductDetail.jsx";
 import SearchResults from "./pages/SearchResults.jsx";
 import Cart from "./pages/Cart.jsx";
 import RegisterPage from "./pages/RegisterPage/RegisterPage.jsx";
+import SellProduct from "./pages/SellProduct/SellProduct.jsx";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/products/:productId" element={<ProductDetail />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/sell" element={<SellProduct />} />
         </Routes>
       </div>
     </CartProvider>

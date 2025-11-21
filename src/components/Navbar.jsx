@@ -78,6 +78,16 @@ export default function Navbar() {
                 <span>Cart</span>
               </NavLink>
             </li>
+            <li className="nav-item d-flex align-items-center">
+              <NavLink
+                to="/sell"
+                className={({ isActive }) =>
+                  `btn btn-outline-success ms-2 ${isActive ? 'active' : ''}`
+                }
+              >
+                <i className="bi bi-plus-lg me-1"></i> Sell
+              </NavLink>
+            </li>
           </ul>
         </div>
       </div>
