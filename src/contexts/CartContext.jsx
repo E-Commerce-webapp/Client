@@ -16,11 +16,11 @@ export function CartProvider({ children }) {
 
   const addToCart = (product, quantity = 1) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.product_id);
+      const existingItem = prevCart.find(item => item.id === product.id);
       
       if (existingItem) {
         return prevCart.map(item =>
-          item.id === product.product_id
+          item.id === product.id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
@@ -29,10 +29,10 @@ export function CartProvider({ children }) {
       return [
         ...prevCart,
         {
-          id: product.product_id,
-          name: product.name,
+          id: product.id,
+          name: product.title,
           price: product.price,
-          image: product.image,
+          images: product.images[0],
           quantity: quantity,
           seller_id: product.seller_id
         }

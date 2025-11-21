@@ -20,7 +20,6 @@ const LoginPage = () => {
         email,
         password
       });
-      console.log("Login successful:", response.data);
       if (response.status === 200) {
         localStorage.setItem("token", response.data.token);
         navigate("/");
