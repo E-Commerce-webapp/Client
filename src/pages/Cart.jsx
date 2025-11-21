@@ -43,11 +43,12 @@ export default function Cart() {
           <div className="card mb-4">
             <div className="card-body p-0">
               {cart.map(item => (
+                console.log(item),
                 <div key={item.id} className="row g-0 border-bottom p-3 align-items-center">
                   <div className="col-md-2">
                     <img 
-                      src={item.image} 
-                      alt={item.name} 
+                      src={item.images} 
+                      alt={item.title} 
                       className="img-fluid rounded"
                       style={{ maxHeight: '80px', objectFit: 'contain' }}
                     />

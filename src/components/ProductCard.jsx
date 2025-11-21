@@ -4,7 +4,7 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    navigate(`/products/${product.product_id}`);
+    navigate(`/products/${product.id}`);
   };
 
   return (
@@ -26,13 +26,13 @@ export default function ProductCard({ product }) {
         }}
       >
         <img
-          src={product.image}
+          src={product.images[0]}
           className="card-img-top"
-          alt={product.name}
+          alt={product.title}
           style={{ height: '200px', objectFit: 'cover' }}
         />
         <div className="card-body d-flex flex-column">
-          <h5 className="card-title">{product.name}</h5>
+          <h5 className="card-title">{product.title}</h5>
           <p className="card-text text-muted small mb-2">
             Sold by: <span className="text-primary">{product.seller_name}</span>
           </p>
