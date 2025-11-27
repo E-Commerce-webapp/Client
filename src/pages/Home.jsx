@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import ProductCard from "../components/ProductCard";
+import { Spinner } from "react-bootstrap";
 
-export default function Home({products}) {
+export default function Home({ products, loading }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -31,25 +32,39 @@ export default function Home({products}) {
     setCurrentPage(page);
   };
 
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "50vh" }}
+      >
+        <Spinner animation="border" role="status" variant="primary">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </div>
+    );
+  }
+
   return (
     <div className="container mt-4">
       <h2 className="mb-4 fw-bold text-center">Products</h2>
 
-      <div className="mb-4 text-center">
-        <div className="btn-group" role="group" aria-label="Category filter">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              className={`btn btn-outline-primary ${
-                selectedCategory === cat ? "active" : ""
-              }`}
-              onClick={() => handleCategoryChange(cat)}
-            >
-              {cat === "all"
-                ? "All"
-                : cat.replace("-", " ").replace("&", " & ")}
-            </button>
-          ))}
+      <div className="mb-4 d-flex justify-content-center">
+        <div className="w-50">
+          <select
+            className="form-select"
+            value={selectedCategory}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            aria-label="Category filter"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat === "all"
+                  ? "All Categories"
+                  : cat.replace("-", " ").replace("&", " & ")}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
