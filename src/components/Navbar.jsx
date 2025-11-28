@@ -46,6 +46,20 @@ export default function Navbar() {
                 <span>Home</span>
               </NavLink>
             </li>
+            {loggedIn && (
+              <li className="nav-item">
+                <NavLink
+                  to="/sell"
+                  className={({ isActive }) =>
+                    `nav-link d-flex align-items-center gap-2 
+                    ${isActive ? 'active fw-bold text-info' : 'text-light'}`
+                  }
+                >
+                  <i className="bi bi-plus-circle fs-5"></i>
+                  <span>Sell</span>
+                </NavLink>
+              </li>
+            )}
             <li className="nav-item">
               <NavLink
                 to={accountLink}
