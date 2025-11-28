@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Button, Container, Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
+import { isTokenValid } from '../utils/auth';
 
 const SellProduct = () => {
   const [formData, setFormData] = useState({
@@ -18,125 +19,136 @@ const SellProduct = () => {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const token = localStorage.getItem('token');
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: files ? files[0] : value
-    }));
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError('Product name is required');
+      return false;
+    }
+    if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+      setError('Please enter a valid price');
+      return false;
+    }
+    if (!formData.category) {
+      setError('Please select a category');
+      return false;
+    }
+    if (formData.stock < 1) {
+      setError('Stock must be at least 1');
+      return false;
+    }
+    if (!formData.image) {
+      setError('Please select an image');
+      return false;
+    }
+    return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    
-    const token = localStorage.getItem('token');
-    console.log('Current token:', token); // Debug log
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-    if (!token) {
-      setError('You must be logged in to sell products');
-      navigate('/login');
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (JPEG, PNG, etc.)');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      
-      const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) formDataToSend.append(key, value);
-      });
+    // Check file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return;
+    }
 
-      console.log('Sending request to:', `${baseUrl}/products`);
-      console.log('Request payload:', Object.fromEntries(formDataToSend.entries()));
-      console.log('Headers:', {
+    setFormData(prev => ({ ...prev, image: file }));
+    setError(''); // Clear any previous errors
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
+    
+    // Convert numeric fields to numbers
+    const processedValue = type === 'number' ? 
+      (value === '' ? '' : parseFloat(value)) : 
+      value;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: processedValue
+    }));
+  };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setSuccess('');
+
+  if (!validateForm()) return;
+
+  const token = localStorage.getItem('token');
+  if (!token || !isTokenValid(token)) {
+    setError('Your session has expired. Please log in again.');
+    localStorage.removeItem('token');
+    navigate('/login');
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+    
+    const formDataToSend = new FormData();
+    formDataToSend.append('name', formData.name);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('price', formData.price.toString());
+    formDataToSend.append('category', formData.category);
+    formDataToSend.append('stock', formData.stock.toString());
+    
+    if (formData.image) {
+      formDataToSend.append('image', formData.image);
+    }
+
+    const response = await axios.post(`${baseUrl}/products`, formDataToSend, {
+      headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${token}`
-      });
-
-      const response = await axios.post(`${baseUrl}/products`, formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        },
-        validateStatus: (status) => status < 500 // Accept all status codes less than 500 as not to throw
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response data:', response.data);
-      
-      if (response.status >= 200 && response.status < 300) {
-        setSuccess('Product listed successfully!');
-        
-        // Reset form
-        setFormData({
-          name: '',
-          description: '',
-          price: '',
-          category: '',
-          stock: 1,
-          image: null,
-        });
-        
-        // Redirect to product page after a short delay
-        setTimeout(() => {
-          navigate(`/products/${response.data.id}`);
-        }, 1500);
-      } else {
-        throw new Error(response.data?.message || 'Failed to list product');
+      },
+      // This is important for FormData
+      transformRequest: (data, headers) => {
+        // Remove the default Content-Type header to let the browser set it with the correct boundary
+        delete headers['Content-Type'];
+        return data;
       }
-      
-    } catch (err) {
-      console.error('Error details:', {
-        message: err.message,
-        response: {
-          status: err.response?.status,
-          statusText: err.response?.statusText,
-          data: err.response?.data,
-          headers: err.response?.headers
-        },
-        config: {
-          url: err.config?.url,
-          method: err.config?.method,
-          headers: err.config?.headers
-        }
-      });
-      
-      let errorMessage = 'Failed to list product. Please try again.';
-      
-      if (err.response) {
-        // Server responded with a status code that falls out of the range of 2xx
-        if (err.response.status === 401) {
-          errorMessage = 'Your session has expired. Please log in again.';
-          localStorage.removeItem('token');
-          navigate('/login');
-        } else if (err.response.status === 400) {
-          errorMessage = err.response.data?.message || 'Invalid input. Please check your form data.';
-        } else if (err.response.status === 403) {
-          errorMessage = 'You do not have permission to perform this action.';
-        } else if (err.response.status === 409) {
-          errorMessage = 'A product with this name already exists.';
-        }
-      } else if (err.request) {
-        // The request was made but no response was received
-        errorMessage = 'No response from server. Please check your connection.';
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+    });
+
+    // Rest of your success handling...
+  } catch (err) {
+    console.error('Error details:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    });
+    
+    let errorMessage = 'Failed to list product. Please try again.';
+    if (err.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else if (err.response?.data?.message) {
+      errorMessage = err.response.data.message;
     }
-  };
+    
+    setError(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <Container className="py-5">
       <div className="mx-auto" style={{ maxWidth: '800px' }}>
         <h2 className="mb-4">Sell Your Product</h2>
         
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
         
         <Form onSubmit={handleSubmit}>
@@ -149,6 +161,7 @@ const SellProduct = () => {
               onChange={handleChange}
               required
               placeholder="Enter product name"
+              disabled={isLoading}
             />
           </Form.Group>
 
@@ -162,6 +175,7 @@ const SellProduct = () => {
               onChange={handleChange}
               required
               placeholder="Enter product description"
+              disabled={isLoading}
             />
           </Form.Group>
 
@@ -177,6 +191,7 @@ const SellProduct = () => {
                 onChange={handleChange}
                 required
                 placeholder="0.00"
+                disabled={isLoading}
               />
             </Form.Group>
 
@@ -189,6 +204,7 @@ const SellProduct = () => {
                 value={formData.stock}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </Form.Group>
           </div>
@@ -200,6 +216,7 @@ const SellProduct = () => {
               value={formData.category}
               onChange={handleChange}
               required
+              disabled={isLoading}
             >
               <option value="">Select a category</option>
               <option value="Electronics">Electronics</option>
@@ -216,12 +233,12 @@ const SellProduct = () => {
             <Form.Control
               type="file"
               accept="image/*"
-              name="image"
-              onChange={handleChange}
+              onChange={handleImageChange}
               required
+              disabled={isLoading}
             />
             <Form.Text className="text-muted">
-              Upload a clear photo of your product
+              Upload a clear photo of your product (max 5MB)
             </Form.Text>
           </Form.Group>
 
