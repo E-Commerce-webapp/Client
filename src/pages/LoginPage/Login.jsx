@@ -1,78 +1,106 @@
-import axios from "axios";
-import React, { useState } from "react";
-import { Form, Button, Card, Container } from "react-bootstrap";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Form, Button, Container, Alert, Spinner } from 'react-bootstrap';
+import axios from 'axios';
+import api, { handleApiError } from '../../utils/api';
 
-
-const LoginPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const base_url = import.meta.env.VITE_API_BASE_URL;
-  console.log("API Base URL:", base_url);
-
+const Login = () => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password });
-    try{
-      const response = await axios.post(`${base_url}/auth/login`, {
-        email,
-        password
-      });
-      if (response.status === 200) {
-        localStorage.setItem("token", response.data.token);
-        navigate("/");
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, formData);
+      
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        // Redirect to home or intended page
+        navigate('/');
       }
     } catch (error) {
-      console.error("Login failed:", error);
+      setError(handleApiError(error));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Container
-      className="d-flex justify-content-center align-items-center"
-      style={{ minHeight: "60vh" }}
-    >
-      <Card style={{ width: "350px" }} className="p-4 shadow">
-        <h3 className="text-center mb-3">Login</h3>
+    <Container className="py-5" style={{ maxWidth: '500px' }}>
+      <h2 className="text-center mb-4">Login</h2>
+      
+      {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+      
+      <Form onSubmit={handleSubmit}>
+        <Form.Group className="mb-3" controlId="email">
+          <Form.Label>Email address</Form.Label>
+          <Form.Control
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            placeholder="Enter email"
+          />
+        </Form.Group>
 
-        <Form onSubmit={handleSubmit}>
-          <Form.Group controlId="formBasicEmail" className="mb-3">
-            <Form.Label>Email address</Form.Label>
-            <Form.Control
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </Form.Group>
+        <Form.Group className="mb-3" controlId="password">
+          <Form.Label>Password</Form.Label>
+          <Form.Control
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            placeholder="Password"
+          />
+        </Form.Group>
 
-          <Form.Group controlId="formBasicPassword" className="mb-3">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </Form.Group>
-
-          <Button variant="primary" type="submit" className="w-100">
-            Login
+        <div className="d-grid gap-2">
+          <Button variant="primary" type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
           </Button>
-        </Form>
-        <div className="text-center mt-3">
-          <p style={{ margin: 0 }}>
-            Don’t have an account?{" "}
-            <Link to="/register">Register</Link>
-          </p>
         </div>
-      </Card>
+      </Form>
+
+      <div className="text-center mt-3">
+        <p>
+          Don't have an account?{' '}
+          <a href="/register" className="text-decoration-none">Register here</a>
+        </p>
+      </div>
     </Container>
   );
 };
 
-export default LoginPage;
+export default Login;

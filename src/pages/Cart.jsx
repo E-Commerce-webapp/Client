@@ -32,12 +32,14 @@ export default function Cart() {
         <div className="col-lg-8">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2>Your Cart ({cartCount} {cartCount === 1 ? 'item' : 'items'})</h2>
-            <button 
-              onClick={clearCart}
-              className="btn btn-outline-danger btn-sm"
-            >
-              Clear Cart
-            </button>
+            <div>
+              <button 
+                onClick={clearCart}
+                className="btn btn-outline-danger"
+              >
+                Clear Cart
+              </button>
+            </div>
           </div>
           
           <div className="card mb-4">
@@ -126,9 +128,9 @@ export default function Cart() {
                 <strong>Total</strong>
                 <strong>${cartTotal.toFixed(2)}</strong>
               </div>
-              <button className="btn btn-primary w-100 py-2">
+              <Link to="/checkout" className="btn btn-primary w-100 py-2">
                 Proceed to Checkout
-              </button>
+              </Link>
             </div>
           </div>
         </div>
