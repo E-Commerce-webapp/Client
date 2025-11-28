@@ -31,7 +31,7 @@ export default function Navbar() {
           <div className="d-none d-lg-block me-3 flex-grow-1 mx-4">
             <SearchBar />
           </div>
-          
+
           <ul className="navbar-nav ms-auto">
             <li className="nav-item">
               <NavLink
@@ -39,7 +39,7 @@ export default function Navbar() {
                 end
                 className={({ isActive }) =>
                   `nav-link d-flex align-items-center gap-2 
-                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
+                  ${isActive ? "active fw-bold text-info" : "text-light"}`
                 }
               >
                 <i className="bi bi-house-door fs-5"></i>
@@ -62,14 +62,30 @@ export default function Navbar() {
             )}
             <li className="nav-item">
               <NavLink
+                to="/seller"
+                className={({ isActive }) =>
+                  `nav-link d-flex align-items-center gap-2 
+                  ${isActive ? "active fw-bold text-info" : "text-light"}`
+                }
+              >
+                <i className="bi bi-shop fs-5"></i>
+                <span>Seller Hub</span>
+              </NavLink>
+            </li>
+            <li className="nav-item">
+              <NavLink
                 to={accountLink}
                 className={({ isActive }) =>
                   `nav-link d-flex align-items-center gap-2 
-                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
+                  ${isActive ? "active fw-bold text-info" : "text-light"}`
                 }
               >
-                {loggedIn ? (<i className="bi bi-person-fill fs-5"></i>) : (<i className="bi bi-person fs-5"></i>)}
-                <span>{loggedIn ? 'Account' : 'Login'}</span>
+                {loggedIn ? (
+                  <i className="bi bi-person-fill fs-5"></i>
+                ) : (
+                  <i className="bi bi-person fs-5"></i>
+                )}
+                <span>{loggedIn ? "Account" : "Login"}</span>
               </NavLink>
             </li>
             <li className="nav-item">
@@ -77,14 +93,17 @@ export default function Navbar() {
                 to="/cart"
                 className={({ isActive }) =>
                   `nav-link position-relative d-flex align-items-center gap-2 
-                  ${isActive ? 'active fw-bold text-info' : 'text-light'}`
+                  ${isActive ? "active fw-bold text-info" : "text-light"}`
                 }
               >
                 <div className="position-relative">
                   <i className="bi bi-cart3 fs-5"></i>
                   {cartCount > 0 && (
-                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
-                      {cartCount > 9 ? '9+' : cartCount}
+                    <span
+                      className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                      style={{ fontSize: "0.6rem" }}
+                    >
+                      {cartCount > 9 ? "9+" : cartCount}
                       <span className="visually-hidden">items in cart</span>
                     </span>
                   )}
@@ -95,7 +114,7 @@ export default function Navbar() {
           </ul>
         </div>
       </div>
-      
+
       {/* Search Bar when toggled */}
       <div className="container-fluid d-lg-none mt-2">
         <div className="px-2">

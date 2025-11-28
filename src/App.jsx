@@ -23,6 +23,7 @@ export default function App() {
   const token = localStorage.getItem("token");
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const fetchProducts = async () => {
     try {
