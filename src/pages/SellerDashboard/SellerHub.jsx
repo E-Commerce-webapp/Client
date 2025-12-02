@@ -1,7 +1,9 @@
 import React from "react";
 import { Card, Row, Col, Button, Table } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 
 const SellerHub = () => {
+  const navigate = useNavigate();
   // Mock Data
   const stats = {
     earnings: 12450.5,
@@ -40,7 +42,7 @@ const SellerHub = () => {
     <div className="p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold">Seller Hub</h2>
-        <Button variant="dark">
+        <Button variant="dark" onClick={() => navigate('/sell')}>
           <i className="bi bi-plus-lg me-2"></i>
           Add Product
         </Button>

@@ -1,12 +1,37 @@
-import { NavLink } from "react-router-dom";
+// src/components/Navbar.jsx
+import { NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
+import { isTokenValid } from "../utils/auth";
+import { useState } from 'react';
+import { Dropdown } from 'react-bootstrap';
 
 export default function Navbar() {
   const { cartCount } = useCart();
   const token = localStorage.getItem("token");
-  const loggedIn = !!token;
-  const accountLink = loggedIn ? "/profile" : "/login";
+  const loggedIn = token && isTokenValid(token);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  const toggleUserMenu = () => setShowUserMenu(!showUserMenu);
+  const closeUserMenu = () => setShowUserMenu(false);
+
+  // Get user's first name from token or default to 'User'
+  const getUserName = () => {
+    if (!token) return 'Account';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.sub || 'Account';
+    } catch (e) {
+      return 'Account';
+    }
+  };
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
       <div className="container-fluid">
@@ -27,12 +52,11 @@ export default function Navbar() {
         </button>
 
         <div className="collapse navbar-collapse" id="navbarNav">
-          {/* Searchbar on medium and larger screens */}
           <div className="d-none d-lg-block me-3 flex-grow-1 mx-4">
             <SearchBar />
           </div>
 
-          <ul className="navbar-nav ms-auto">
+          <ul className="navbar-nav ms-auto align-items-center">
             <li className="nav-item">
               <NavLink
                 to="/"
@@ -43,65 +67,110 @@ export default function Navbar() {
                 }
               >
                 <i className="bi bi-house-door fs-5"></i>
-                <span>Home</span>
+                <span className="d-none d-md-inline">Home</span>
               </NavLink>
             </li>
-            <li className="nav-item">
-              <NavLink
-                to="/seller"
-                className={({ isActive }) =>
-                  `nav-link d-flex align-items-center gap-2 
-                  ${isActive ? "active fw-bold text-info" : "text-light"}`
-                }
-              >
-                <i className="bi bi-shop fs-5"></i>
-                <span>Seller Hub</span>
-              </NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink
-                to={accountLink}
-                className={({ isActive }) =>
-                  `nav-link d-flex align-items-center gap-2 
-                  ${isActive ? "active fw-bold text-info" : "text-light"}`
-                }
-              >
+
+            {loggedIn && (
+              <li className="nav-item">
+                <NavLink
+                  to="/seller"
+                  className={({ isActive }) =>
+                    `nav-link d-flex align-items-center gap-2 
+                    ${isActive ? "active fw-bold text-info" : "text-light"}`
+                  }
+                >
+                  <i className="bi bi-shop fs-5"></i>
+                  <span className="d-none d-md-inline">Seller Hub</span>
+                </NavLink>
+              </li>
+            )}
+
+            {/* User Account Dropdown */}
+            <li className="nav-item dropdown" onMouseLeave={closeUserMenu}>
+              <div className="d-flex align-items-center">
+                <button
+                  className="nav-link d-flex align-items-center gap-2 text-light bg-transparent border-0"
+                  onClick={toggleUserMenu}
+                  aria-expanded={showUserMenu}
+                >
+                  <i className="bi bi-person-circle fs-4"></i>
+                  <span className="d-none d-md-inline">{getUserName()}</span>
+                  <i className={`bi bi-chevron-${showUserMenu ? 'up' : 'down'} ms-1`}></i>
+                </button>
+              </div>
+              
+              <div className={`dropdown-menu dropdown-menu-end ${showUserMenu ? 'show' : ''}`}>
                 {loggedIn ? (
-                  <i className="bi bi-person-fill fs-5"></i>
+                  <>
+                    <NavLink 
+                      to="/profile" 
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={closeUserMenu}
+                    >
+                      <i className="bi bi-person"></i> My Profile
+                    </NavLink>
+                    <NavLink 
+                      to="/orders" 
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={closeUserMenu}
+                    >
+                      <i className="bi bi-box-seam"></i> My Orders
+                    </NavLink>
+                    <div className="dropdown-divider"></div>
+                    <button 
+                      className="dropdown-item d-flex align-items-center gap-2 text-danger"
+                      onClick={() => {
+                        closeUserMenu();
+                        handleLogout();
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                  </>
                 ) : (
-                  <i className="bi bi-person fs-5"></i>
+                  <>
+                    <NavLink 
+                      to="/login" 
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={closeUserMenu}
+                    >
+                      <i className="bi bi-box-arrow-in-right"></i> Login
+                    </NavLink>
+                    <NavLink 
+                      to="/register" 
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={closeUserMenu}
+                    >
+                      <i className="bi bi-person-plus"></i> Register
+                    </NavLink>
+                  </>
                 )}
-                <span>{loggedIn ? "Account" : "Login"}</span>
-              </NavLink>
+              </div>
             </li>
+
+            {/* Cart Icon */}
             <li className="nav-item">
               <NavLink
                 to="/cart"
                 className={({ isActive }) =>
-                  `nav-link position-relative d-flex align-items-center gap-2 
+                  `nav-link d-flex align-items-center gap-2 position-relative 
                   ${isActive ? "active fw-bold text-info" : "text-light"}`
                 }
               >
-                <div className="position-relative">
-                  <i className="bi bi-cart3 fs-5"></i>
-                  {cartCount > 0 && (
-                    <span
-                      className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                      style={{ fontSize: "0.6rem" }}
-                    >
-                      {cartCount > 9 ? "9+" : cartCount}
-                      <span className="visually-hidden">items in cart</span>
-                    </span>
-                  )}
-                </div>
-                <span>Cart</span>
+                <i className="bi bi-cart3 fs-5"></i>
+                <span className="d-none d-md-inline">Cart</span>
+                {cartCount > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
               </NavLink>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Search Bar when toggled */}
       <div className="container-fluid d-lg-none mt-2">
         <div className="px-2">
           <SearchBar />
