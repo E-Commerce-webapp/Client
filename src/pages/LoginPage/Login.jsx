@@ -1,52 +1,133 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, Button, Container, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
-import api, { handleApiError } from '../../utils/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Form, Button, Container, Alert, Spinner } from "react-bootstrap";
+import axios from "axios";
+import { handleApiError } from "../../utils/api";
 
 const Login = () => {
+  const [step, setStep] = useState("email");
+
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+    address: ""
   });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
+  const handleEmailStep = async (email) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, formData);
-      
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        // Redirect to home or intended page
-        navigate('/');
+      setError("");
+      setIsLoading(true);
+
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/check-email/${email}`
+      );
+
+      if (res.data.exists) {
+        setStep("login");
+      } else {
+        setStep("register");
       }
-    } catch (error) {
-      setError(handleApiError(error));
+    } catch (err) {
+      setError(handleApiError(err));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleLoginStep = async () => {
+    try {
+      setError("");
+      setIsLoading(true);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
+        {
+          email: formData.email,
+          password: formData.password,
+        }
+      );
+
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        navigate("/");
+      }
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegisterStep = async () => {
+    try {
+      setError("");
+      setIsLoading(true);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/register`,
+        {
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+        }
+      );
+
+      if (response.status == 200) {
+        setStep("login");
+      }
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (step === "email") {
+      await handleEmailStep(formData.email);
+    } else if (step === "login") {
+      await handleLoginStep();
+    } else {
+      await handleRegisterStep();
+    }
+  };
+
+  const renderTitle = () => {
+    if (step === "email") return "Login or Register Instantly";
+    if (step === "login") return "Welcome back";
+    return "Create your account";
+  };
+
+  console.log("Current step:", step);
+
   return (
-    <Container className="py-5" style={{ maxWidth: '500px' }}>
-      <h2 className="text-center mb-4">Login</h2>
-      
-      {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
-      
+    <Container className="py-5" style={{ maxWidth: "500px" }}>
+      <h2 className="text-center mb-4">{renderTitle()}</h2>
+
+      {error && (
+        <Alert variant="danger" onClose={() => setError("")} dismissible>
+          {error}
+        </Alert>
+      )}
+
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3" controlId="email">
           <Form.Label>Email address</Form.Label>
@@ -57,20 +138,63 @@ const Login = () => {
             onChange={handleChange}
             required
             placeholder="Enter email"
+            disabled={step !== "email"}
           />
         </Form.Group>
 
-        <Form.Group className="mb-3" controlId="password">
-          <Form.Label>Password</Form.Label>
-          <Form.Control
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            placeholder="Password"
-          />
-        </Form.Group>
+        {step === "register" && (
+          <>
+            <Form.Group className="mb-3" controlId="firstName">
+              <Form.Label>First name</Form.Label>
+              <Form.Control
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="Your first name"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="lastName">
+              <Form.Label>Last name</Form.Label>
+              <Form.Control
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Your last name"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="address">
+              <Form.Label>Address</Form.Label>
+              <Form.Control
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Your address"
+              />
+            </Form.Group>
+          </>
+        )}
+
+        {(step === "login" || step === "register") && (
+          <Form.Group className="mb-3" controlId="password">
+            <Form.Label>
+              {step === "login" ? "Password" : "Create a password"}
+            </Form.Label>
+            <Form.Control
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              placeholder={
+                step === "login" ? "Enter your password" : "Choose a password"
+              }
+            />
+          </Form.Group>
+        )}
 
         <div className="d-grid gap-2">
           <Button variant="primary" type="submit" disabled={isLoading}>
@@ -84,21 +208,36 @@ const Login = () => {
                   aria-hidden="true"
                   className="me-2"
                 />
-                Logging in...
+                {step === "email"
+                  ? "Checking..."
+                  : step === "login"
+                  ? "Logging in..."
+                  : "Creating account..."}
               </>
             ) : (
-              'Login'
+              <>
+                {step === "email" && "Continue"}
+                {step === "login" && "Login"}
+                {step === "register" && "Create account"}
+              </>
             )}
           </Button>
         </div>
-      </Form>
 
-      <div className="text-center mt-3">
-        <p>
-          Don't have an account?{' '}
-          <a href="/register" className="text-decoration-none">Register here</a>
-        </p>
-      </div>
+        {step !== "email" && (
+          <div className="text-center mt-3">
+            <Button
+              variant="link"
+              type="button"
+              onClick={() => setStep("email")}
+              disabled={isLoading}
+              className="text-decoration-none"
+            >
+              Use a different email
+            </Button>
+          </div>
+        )}
+      </Form>
     </Container>
   );
 };

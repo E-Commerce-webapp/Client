@@ -27,29 +27,20 @@ export default function App() {
   const token = localStorage.getItem("token");
 
   const fetchProducts = useCallback(async () => {
-    if (!token || !isTokenValid(token)) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await axios.get(`${baseUrl}/products/external`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await axios.get(`${baseUrl}/products/external`);
+      console.log("Fetched products:", response.data);
       setProducts(response.data);
     } catch (error) {
       console.error("Error fetching products:", error);
-      if (error.response?.status === 401) {
+      if (!isTokenValid(token)) {
         localStorage.removeItem('token');
       }
     } finally {
       setLoading(false);
     }
-  }, [token, baseUrl]);
+  }, [baseUrl]);
 
   useEffect(() => {
     fetchProducts();
