@@ -13,7 +13,6 @@ import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
-import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import SellProduct from "./pages/SellProduct";
 import Profile from "./pages/Profile";
@@ -53,7 +52,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home products={products} loading={loading} />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/products/:productId" element={<ProductDetail products={products} />} />
           <Route path="/search" element={<SearchResults />} />
