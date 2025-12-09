@@ -1,27 +1,159 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Form, Button, Card, Container, ProgressBar } from "react-bootstrap";
+import axios from "axios";
 
 const KYCForm = ({ onComplete }) => {
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
+    storeName: "",
+    phoneNumber: "",
     address: "",
-    phone: "",
+    description: "",
   });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  
+  const token = localStorage.getItem("token");
+
+  const fetchUser = async () => {
+    if (!token) {
+      setLoadingUser(false);
+      return;
+    }
+
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/users`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setUser(res.data);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    } finally {
+      setLoadingUser(false);
+    }
   };
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    let interval;
+
+    if (user && !user.isASeller && !user.emailConfirm) {
+      interval = setInterval(async () => {
+        console.log("Checking verification status...");
+
+        try {
+          const res = await axios.get(
+            `${import.meta.env.VITE_API_BASE_URL}/users`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          if (res.data.isASeller && res.data.emailConfirm) {
+            setUser(res.data);
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+        }
+      }, 3000);
+    }
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const canCreateStore =
+    user?.isASeller === true && user?.emailConfirm === true;
+
+  const sendVerificationEmail = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/users/become-seller`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (res.status === 200) {
+        alert(
+          "Verification email sent! Please check your inbox and click the link, then come back to create your store."
+        );
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Error sending verification email:", err);
+      alert("Failed to send verification email.");
+      return false;
+    }
+  };
+
+  const createStore = async () => {
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/stores`,
+        {
+          name: formData.storeName,
+          phoneNumber: formData.phoneNumber,
+          address: formData.address,
+          description: formData.description,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (res.status === 201) {
+        alert("Store created successfully!");
+        return true;
+      }
+      alert("Failed to create store.");
+      return false;
+    } catch (err) {
+      console.error("Error creating store:", err);
+      alert("Error creating store.");
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, we would send this data to the backend
-    console.log("KYC Data Submitted:", formData);
-    onComplete();
+    if (!token) {
+      alert("You must be logged in first.");
+      return;
+    }
+
+    setSubmitting(true);
+    if(canCreateStore){
+      setSubmitted(false);
+    }
+
+    try {
+      await fetchUser();
+
+      if (canCreateStore) {
+        const ok = await createStore();
+        if (ok && onComplete) onComplete();
+      } else {
+        await sendVerificationEmail();
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -30,7 +162,7 @@ const KYCForm = ({ onComplete }) => {
         <h2 className="fw-bold">Become a Seller</h2>
         <p className="text-muted">
           Complete the verification process to start selling on our platform.
-          This typically takes 2-3 business days to review.
+          This typically takes 2–3 business days to review.
         </p>
       </div>
 
@@ -59,68 +191,120 @@ const KYCForm = ({ onComplete }) => {
               <i className="bi bi-person"></i>
             </div>
             <div>
-              <h5 className="mb-0">Personal Information</h5>
-              <small className="text-muted">Tell us about yourself</small>
+              <h5 className="mb-0">Store Information</h5>
+              <small className="text-muted">Tell us about your store</small>
             </div>
           </div>
 
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Full Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="fullName"
-                placeholder="Enter your full name"
-                value={formData.fullName}
-                onChange={handleChange}
-                required
-                className="bg-light"
-              />
-            </Form.Group>
+          {loadingUser ? (
+            <p>Loading your info...</p>
+          ) : (
+            <>
+              {!canCreateStore && (
+                <div className="alert alert-info py-2">
+                  <strong>Step 1:</strong> Verify your email to become a seller.
+                  Click "Continue" to get a verification email.
+                </div>
+              )}
 
-            <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="bg-light"
-              />
-            </Form.Group>
+              {canCreateStore && (
+                <div className="alert alert-success py-2">
+                  Email verified! Fill in your store details and click "Create
+                  Store".
+                </div>
+              )}
+              {submitted && (
+                <div className="alert alert-info py-2">
+                  A verification email has been sent.
+                  <br />
+                  <strong>
+                    This page will automatically update once you verify.
+                  </strong>
+                </div>
+              )}
 
-            <Form.Group className="mb-3">
-              <Form.Label>Address</Form.Label>
-              <Form.Control
-                type="text"
-                name="address"
-                placeholder="Enter your address"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                className="bg-light"
-              />
-            </Form.Group>
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Store Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="storeName"
+                    placeholder="Enter your store name"
+                    value={formData.storeName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, storeName: e.target.value })
+                    }
+                    required
+                    className="bg-light"
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Phone Number</Form.Label>
-              <Form.Control
-                type="tel"
-                name="phone"
-                placeholder="Enter phone number"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-                className="bg-light"
-              />
-            </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Phone Number</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    name="phoneNumber"
+                    placeholder="Enter your store phone number"
+                    value={formData.phoneNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        phoneNumber: e.target.value,
+                      })
+                    }
+                    required
+                    className="bg-light"
+                  />
+                </Form.Group>
 
-            <Button variant="dark" type="submit" className="w-100 py-2 mt-3">
-              Continue
-            </Button>
-          </Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Address</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="address"
+                    placeholder="Enter your store address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    required
+                    className="bg-light"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="description"
+                    placeholder="Enter description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        description: e.target.value,
+                      })
+                    }
+                    required
+                    className="bg-light"
+                  />
+                </Form.Group>
+
+                <Button
+                  variant="dark"
+                  type="submit"
+                  className="w-100 py-2 mt-3"
+                  disabled={submitting || loadingUser}
+                >
+                  {submitting
+                    ? "Processing..."
+                    : canCreateStore
+                    ? "Create Store"
+                    : "Continue (Verify Email)"}
+                </Button>
+              </Form>
+            </>
+          )}
         </Card.Body>
       </Card>
     </Container>
