@@ -1,12 +1,52 @@
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getCommentsByProduct, createComment } from '../services/commentService';
+import CommentList from '../components/comments/CommentList';
+import CommentForm from '../components/comments/CommentForm';
 
 export default function ProductDetail({ products }) {
   const { productId } = useParams();
   const product = products.find(p => p.id === productId); 
   const [quantity, setQuantity] = useState(1);
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { addToCart } = useCart();
+  const { currentUser } = useAuth();
+
+  // Fetch comments for the current product
+  useEffect(() => {
+    const fetchComments = async () => {
+      console.log('Fetching comments for product ID:', productId);
+      try {
+        const fetchedComments = await getCommentsByProduct(productId);
+        console.log('Fetched comments:', fetchedComments);
+        setComments(fetchedComments);
+      } catch (err) {
+        console.error('Failed to fetch comments:', err);
+        setError('Failed to load comments');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (productId) {
+      fetchComments();
+    }
+  }, [productId]);
+
+  const handleAddComment = async (content) => {
+    try {
+      const newComment = await createComment(productId, content);
+      setComments(prev => [...prev, newComment]);
+      return newComment; // Return the created comment
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+      throw err;
+    }
+  };
 
   if (!products || products.length === 0) {
     return <div className="container mt-4">Loading product...</div>;
@@ -99,6 +139,44 @@ export default function ProductDetail({ products }) {
             </p>
           </div>
 
+        </div>
+      </div>
+      
+      {/* Comments Section */}
+      <div className="row mt-5">
+        <div className="col-12">
+          <h3 className="mb-4">Customer Reviews</h3>
+          
+          {/* Comment Form - Only show if user is logged in */}
+          {currentUser ? (
+            <div className="card mb-4">
+              <div className="card-body">
+                <h5 className="card-title">Write a Review</h5>
+                <CommentForm onSubmit={handleAddComment} />
+              </div>
+            </div>
+          ) : (
+            <div className="alert alert-info">
+              Please <a href="/login">sign in</a> to leave a review.
+            </div>
+          )}
+          
+          {/* Comments List */}
+          <div className="mt-4">
+            {loading ? (
+              <div className="text-center my-4">
+                <div className="spinner-border" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="alert alert-warning">{error}</div>
+            ) : comments && comments.length === 0 ? (
+              <div className="alert alert-info">No reviews yet. Be the first to review!</div>
+            ) : (
+              <CommentList comments={comments} currentUser={currentUser} />
+            )}
+          </div>
         </div>
       </div>
     </div>

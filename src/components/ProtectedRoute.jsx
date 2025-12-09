@@ -1,16 +1,18 @@
-
+// src/components/ProtectedRoute.jsx
 import { Navigate } from 'react-router-dom';
-import { isTokenValid } from '../utils/auth';
+import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  
-  if (!token || !isTokenValid(token)) {
-    // Clear invalid token
-    localStorage.removeItem('token'); 
+const ProtectedRoute = ({ children, requiredRole }) => {
+  const { currentUser } = useAuth();
+
+  if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
-  
+
+  if (requiredRole && !currentUser.roles?.includes(requiredRole)) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 

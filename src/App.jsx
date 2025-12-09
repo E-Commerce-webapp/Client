@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "./contexts/CartContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -46,55 +47,59 @@ export default function App() {
   }, [fetchProducts]);
 
   return (
-    <CartProvider>
-      <Navbar />
-      <div className="container mt-4">
-        <Routes>
-          <Route path="/" element={<Home products={products} loading={loading} />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Login initialStep="register" />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/products/:productId" element={<ProductDetail products={products} />} />
-          <Route path="/search" element={<SearchResults />} />
-          
-          {/* Protected Routes */}
-          <Route path="/seller" element={
-            <ProtectedRoute>
-              <SellerDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/sell" element={
-            <ProtectedRoute>
-              <SellProduct />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/checkout" element={
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          } />
-          <Route path="/order-confirmation/:orderId" element={
-            <ProtectedRoute>
-              <OrderConfirmation />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute>
-              <OrderHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders/:orderId" element={
-            <ProtectedRoute>
-              <OrderDetail />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </div>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <div className="App">
+          <Navbar />
+          <main className="container py-4">
+            <Routes>
+              <Route path="/" element={<Home products={products} loading={loading} />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Login initialStep="register" />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/products/:productId" element={<ProductDetail products={products} />} />
+              <Route path="/search" element={<SearchResults />} />
+              
+              {/* Protected Routes */}
+              <Route path="/seller" element={
+                <ProtectedRoute>
+                  <SellerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/sell" element={
+                <ProtectedRoute>
+                  <SellProduct />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/checkout" element={
+                <ProtectedRoute>
+                  <Checkout />
+                </ProtectedRoute>
+              } />
+              <Route path="/order-confirmation/:orderId" element={
+                <ProtectedRoute>
+                  <OrderConfirmation />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders" element={
+                <ProtectedRoute>
+                  <OrderHistory />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders/:orderId" element={
+                <ProtectedRoute>
+                  <OrderDetail />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </main>
+        </div>
+      </CartProvider>
+    </AuthProvider>
   );
 }
