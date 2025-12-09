@@ -40,12 +40,26 @@ export const getCommentsByProduct = async (productId) => {
 
 export const createComment = async (productId, content, rating = 5) => {
   try {
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Decode the token to get user info
+    const user = JSON.parse(atob(token.split('.')[1]));
+    if (!user || !user.sub) {
+      throw new Error('Invalid token format');
+    }
+    
     const response = await api.post('/api/comments', { 
       productId,
       content,
       rating,
-      // The backend will automatically add userId and userFullName from the JWT token
+      userId: user.sub, // sub is typically the user ID in JWT
+      userFullName: user.name || user.sub // Use name if available, otherwise fallback to sub
     });
+    
     return response.data;
   } catch (error) {
     console.error('Error creating comment:', error);
