@@ -37,16 +37,16 @@ export default function ProductDetail({ products }) {
     }
   }, [productId]);
 
-  const handleAddComment = async (content) => {
-    try {
-      const newComment = await createComment(productId, content);
-      setComments(prev => [...prev, newComment]);
-      return newComment; // Return the created comment
-    } catch (err) {
-      console.error('Failed to add comment:', err);
-      throw err;
-    }
-  };
+const handleAddComment = async (content, rating = 5) => {
+  try {
+    const newComment = await createComment(productId, content, rating);
+    setComments(prev => [...prev, newComment]);
+    return newComment;
+  } catch (err) {
+    console.error('Failed to add comment:', err);
+    throw err;
+  }
+};
 
   if (!products || products.length === 0) {
     return <div className="container mt-4">Loading product...</div>;
@@ -152,7 +152,17 @@ export default function ProductDetail({ products }) {
             <div className="card mb-4">
               <div className="card-body">
                 <h5 className="card-title">Write a Review</h5>
-                <CommentForm onSubmit={handleAddComment} />
+                <CommentForm 
+                  onSubmit={async (content, rating) => {
+                    try {
+                      await handleAddComment(content, rating);
+                    } catch (error) {
+                      console.error('Error submitting comment:', error);
+                      // Handle error (e.g., show error message to user)
+                    }
+                  }} 
+                  isLoading={false} 
+                />
               </div>
             </div>
           ) : (
