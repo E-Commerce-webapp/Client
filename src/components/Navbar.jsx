@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import { NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
@@ -21,13 +20,12 @@ export default function Navbar() {
   const toggleUserMenu = () => setShowUserMenu(!showUserMenu);
   const closeUserMenu = () => setShowUserMenu(false);
 
-  // Get user's first name from token or default to 'User'
   const getUserName = () => {
     if (!token) return 'Account';
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return payload.sub || 'Account';
-    } catch (e) {
+    } catch (_) {
       return 'Account';
     }
   };

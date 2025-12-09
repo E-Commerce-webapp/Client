@@ -6,7 +6,6 @@ const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   
   if (!token || !isTokenValid(token)) {
-    // Clear invalid token
     localStorage.removeItem('token'); 
     return <Navigate to="/login" replace />;
   }

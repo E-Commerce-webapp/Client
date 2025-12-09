@@ -1,105 +1,94 @@
-// Mock function to simulate API calls
-const simulateApiCall = (data) => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve({ data }), 500);
-  });
-};
+import api from "../utils/api";
 
+/**
+ * Create a new order
+ * @param {Object} orderData - Order data including items, shipping address, payment method
+ * @returns {Promise} Response with created order
+ */
 export const createOrder = async (orderData) => {
   try {
-    // In a real app, this would be an API call
-    // const response = await axios.post('/api/orders', orderData);
-    
-    // For mock data, we'll save to localStorage
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const orderId = `ORD-${Date.now()}`;
-    
-    const newOrder = {
-      id: orderId,
-      ...orderData,
-      date: new Date().toISOString(),
-      status: orderData.status || 'Processing',
-      orderNumber: `#${Math.floor(100000 + Math.random() * 900000)}`
-    };
-    
-    orders.unshift(newOrder); // Add new order to the beginning
-    localStorage.setItem('orders', JSON.stringify(orders));
-    
-    // Return a response that matches what the component expects
-    return {
-      data: {
-        ...newOrder,
-        id: orderId
-      },
-      status: 201,
-      statusText: 'Created',
-      headers: {},
-      config: {}
-    };
+    const response = await api.post("/api/orders", orderData);
+    return response;
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error("Error creating order:", error);
     throw error;
   }
 };
 
+/**
+ * Get all orders for the authenticated user
+ * @returns {Promise} Response with list of orders
+ */
 export const getOrders = async () => {
   try {
-    // In a real app, this would be an API call
-    // const response = await axios.get('/api/orders');
-    
-    // For mock data, we'll get from localStorage
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    
-    // If no orders in localStorage, use the initial mock data
-    if (orders.length === 0) {
-      const mockOrders = await import('../mock/orders.json');
-      localStorage.setItem('orders', JSON.stringify(mockOrders.default || []));
-      return mockOrders.default || [];
-    }
-    
-    return simulateApiCall(orders);
+    const response = await api.get("/api/orders/user");
+    return response.data;
   } catch (error) {
-    console.error('Error fetching orders:', error);
+    console.error("Error fetching orders:", error);
     throw error;
   }
 };
 
+/**
+ * Get a specific order by ID
+ * @param {string} orderId - Order ID
+ * @returns {Promise} Response with order details
+ */
 export const getOrderById = async (orderId) => {
   try {
     if (!orderId) {
-      throw new Error('Order ID is required');
+      throw new Error("Order ID is required");
     }
-    
-    // For mock data, we'll get from localStorage
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    let order = orders.find(o => o.id === orderId);
-    
-    if (!order) {
-      // If not found in localStorage, check the initial mock data
-      try {
-        const mockOrders = await import('../mock/orders.json');
-        order = Array.isArray(mockOrders.default) 
-          ? mockOrders.default.find(o => o.id === orderId)
-          : null;
-      } catch (e) {
-        console.warn('Could not load mock orders:', e);
-      }
-      
-      if (!order) {
-        throw new Error(`Order with ID ${orderId} not found`);
-      }
-    }
-    
-    // Return a response that matches what the component expects
-    return {
-      data: order,
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      config: {}
-    };
+
+    const response = await api.get(`/api/orders/${orderId}`);
+    return response;
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error("Error fetching order:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get all orders for the authenticated seller
+ * @returns {Promise} Response with list of seller's orders
+ */
+export const getSellerOrders = async () => {
+  try {
+    const response = await api.get("/api/orders/seller");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching seller orders:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update order status (seller only)
+ * @param {string} orderId - Order ID
+ * @param {string} status - New order status
+ * @returns {Promise} Response with updated order
+ */
+export const updateOrderStatus = async (orderId, status) => {
+  try {
+    const response = await api.put(`/api/orders/${orderId}/status`, { status });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    throw error;
+  }
+};
+
+/**
+ * Cancel an order (customer only)
+ * @param {string} orderId - Order ID
+ * @returns {Promise} Response with cancelled order
+ */
+export const cancelOrder = async (orderId) => {
+  try {
+    const response = await api.put(`/api/orders/${orderId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error("Error cancelling order:", error);
     throw error;
   }
 };

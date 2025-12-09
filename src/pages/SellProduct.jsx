@@ -1,44 +1,42 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, Button, Container, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
-import { isTokenValid } from '../utils/auth';
+import { useState } from "react";
+import { Alert, Button, Container, Form, Spinner } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { isTokenValid } from "../utils/auth";
 
 const SellProduct = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: '',
+    name: "",
+    description: "",
+    price: "",
+    category: "",
     stock: 1,
     image: null,
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   const validateForm = () => {
     if (!formData.name.trim()) {
-      setError('Product name is required');
+      setError("Product name is required");
       return false;
     }
     if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-      setError('Please enter a valid price');
+      setError("Please enter a valid price");
       return false;
     }
     if (!formData.category) {
-      setError('Please select a category');
+      setError("Please select a category");
       return false;
     }
     if (formData.stock < 1) {
-      setError('Stock must be at least 1');
+      setError("Stock must be at least 1");
       return false;
     }
     if (!formData.image) {
-      setError('Please select an image');
+      setError("Please select an image");
       return false;
     }
     return true;
@@ -49,108 +47,98 @@ const SellProduct = () => {
     if (!file) return;
 
     // Check file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file (JPEG, PNG, etc.)');
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file (JPEG, PNG, etc.)");
       return;
     }
 
     // Check file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image size should be less than 5MB');
+      setError("Image size should be less than 5MB");
       return;
     }
 
-    setFormData(prev => ({ ...prev, image: file }));
-    setError(''); // Clear any previous errors
+    setFormData((prev) => ({ ...prev, image: file }));
+    setError(""); // Clear any previous errors
   };
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    
+
     // Convert numeric fields to numbers
-    const processedValue = type === 'number' ? 
-      (value === '' ? '' : parseFloat(value)) : 
-      value;
-    
-    setFormData(prev => ({
+    const processedValue =
+      type === "number" ? (value === "" ? "" : parseFloat(value)) : value;
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: processedValue
+      [name]: processedValue,
     }));
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setSuccess('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
 
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  const token = localStorage.getItem('token');
-  if (!token || !isTokenValid(token)) {
-    setError('Your session has expired. Please log in again.');
-    localStorage.removeItem('token');
-    navigate('/login');
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    
-    const formDataToSend = new FormData();
-    formDataToSend.append('name', formData.name);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('price', formData.price.toString());
-    formDataToSend.append('category', formData.category);
-    formDataToSend.append('stock', formData.stock.toString());
-    
-    if (formData.image) {
-      formDataToSend.append('image', formData.image);
+    const token = localStorage.getItem("token");
+    if (!token || !isTokenValid(token)) {
+      setError("Your session has expired. Please log in again.");
+      localStorage.removeItem("token");
+      navigate("/login");
+      return;
     }
 
-    const response = await axios.post(`${baseUrl}/products`, formDataToSend, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
-      },
-      // This is important for FormData
-      transformRequest: (data, headers) => {
-        // Remove the default Content-Type header to let the browser set it with the correct boundary
-        delete headers['Content-Type'];
-        return data;
+    try {
+      setIsLoading(true);
+
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("price", formData.price.toString());
+      formDataToSend.append("category", formData.category);
+      formDataToSend.append("stock", formData.stock.toString());
+
+      if (formData.image) {
+        formDataToSend.append("image", formData.image);
       }
-    });
 
-    // Rest of your success handling...
-  } catch (err) {
-    console.error('Error details:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status
-    });
-    
-    let errorMessage = 'Failed to list product. Please try again.';
-    if (err.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.';
-      localStorage.removeItem('token');
-      navigate('/login');
-    } else if (err.response?.data?.message) {
-      errorMessage = err.response.data.message;
+      // Rest of your success handling...
+    } catch (err) {
+      console.error("Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+
+      let errorMessage = "Failed to list product. Please try again.";
+      if (err.response?.status === 401) {
+        errorMessage = "Your session has expired. Please log in again.";
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setError(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <Container className="py-5">
-      <div className="mx-auto" style={{ maxWidth: '800px' }}>
+      <div className="mx-auto" style={{ maxWidth: "800px" }}>
         <h2 className="mb-4">Sell Your Product</h2>
-        
-        {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+
+        {error && (
+          <Alert variant="danger" onClose={() => setError("")} dismissible>
+            {error}
+          </Alert>
+        )}
         {success && <Alert variant="success">{success}</Alert>}
-        
+
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3" controlId="name">
             <Form.Label>Product Name</Form.Label>
@@ -243,9 +231,9 @@ const handleSubmit = async (e) => {
           </Form.Group>
 
           <div className="d-grid gap-2">
-            <Button 
-              variant="primary" 
-              type="submit" 
+            <Button
+              variant="primary"
+              type="submit"
               size="lg"
               disabled={isLoading}
             >
@@ -262,7 +250,7 @@ const handleSubmit = async (e) => {
                   Listing...
                 </>
               ) : (
-                'List Product for Sale'
+                "List Product for Sale"
               )}
             </Button>
           </div>

@@ -1,24 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Table, Badge, Button, Spinner, Alert } from 'react-bootstrap';
-import { useNavigate, Link } from 'react-router-dom';
-import { FaBoxOpen, FaSearch, FaCalendarAlt, FaCheckCircle, FaHome } from 'react-icons/fa';
-import { getOrders } from '../services/orderService';
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Card,
+  Table,
+  Badge,
+  Button,
+  Spinner,
+  Alert,
+} from "react-bootstrap";
+import { Link } from "react-router-dom";
+import {
+  FaBoxOpen,
+  FaSearch,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaHome,
+} from "react-icons/fa";
+import { getOrders } from "../services/orderService";
 
 const OrderHistory = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         const response = await getOrders();
-        setOrders(Array.isArray(response.data) ? response.data : []);
+        // Response is already the data array from the API
+        setOrders(Array.isArray(response) ? response : []);
       } catch (err) {
-        console.error('Error fetching orders:', err);
-        setError('Failed to load order history. Please try again later.');
+        console.error("Error fetching orders:", err);
+        setError("Failed to load order history. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -29,26 +43,26 @@ const OrderHistory = () => {
 
   const getStatusVariant = (status) => {
     switch (status.toLowerCase()) {
-      case 'delivered':
-        return 'success';
-      case 'shipped':
-        return 'primary';
-      case 'processing':
-        return 'warning';
-      case 'cancelled':
-        return 'danger';
+      case "delivered":
+        return "success";
+      case "shipped":
+        return "primary";
+      case "processing":
+        return "warning";
+      case "cancelled":
+        return "danger";
       default:
-        return 'secondary';
+        return "secondary";
     }
   };
 
   const formatDate = (dateString) => {
-    const options = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    const options = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
@@ -71,7 +85,10 @@ const OrderHistory = () => {
           <Alert.Heading>Error Loading Orders</Alert.Heading>
           <p>{error}</p>
           <div className="d-flex justify-content-center gap-2">
-            <Button variant="outline-danger" onClick={() => window.location.reload()}>
+            <Button
+              variant="outline-danger"
+              onClick={() => window.location.reload()}
+            >
               Try Again
             </Button>
             <Button as={Link} to="/" variant="outline-secondary">
@@ -94,7 +111,10 @@ const OrderHistory = () => {
             <Link to="/" className="btn btn-primary">
               <FaHome className="me-1" /> Start Shopping
             </Link>
-            <Button variant="outline-secondary" onClick={() => window.location.reload()}>
+            <Button
+              variant="outline-secondary"
+              onClick={() => window.location.reload()}
+            >
               Refresh Orders
             </Button>
           </div>
@@ -122,7 +142,7 @@ const OrderHistory = () => {
               <Badge bg={getStatusVariant(order.status)} className="me-2">
                 {order.status}
               </Badge>
-              {order.status === 'Delivered' && (
+              {order.status === "Delivered" && (
                 <Badge bg="success" className="me-2">
                   <FaCheckCircle className="me-1" /> Delivered
                 </Badge>
@@ -149,13 +169,18 @@ const OrderHistory = () => {
                     <tr key={`${order.id}-${item.id}`}>
                       <td>
                         <div className="d-flex align-items-center">
-                          <img 
-                            src={item.image} 
+                          <img
+                            src={item.image}
                             alt={item.name}
-                            style={{ width: '50px', height: '50px', objectFit: 'cover', marginRight: '15px' }}
+                            style={{
+                              width: "50px",
+                              height: "50px",
+                              objectFit: "cover",
+                              marginRight: "15px",
+                            }}
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/50';
+                              e.target.src = "https://via.placeholder.com/50";
                             }}
                           />
                           <div>
@@ -166,14 +191,20 @@ const OrderHistory = () => {
                       </td>
                       <td>${item.price.toFixed(2)}</td>
                       <td>{item.quantity}</td>
-                      <td className="text-end">${(item.price * item.quantity).toFixed(2)}</td>
+                      <td className="text-end">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan="3" className="text-end fw-bold">Order Total:</td>
-                    <td className="text-end fw-bold">${order.total.toFixed(2)}</td>
+                    <td colSpan="3" className="text-end fw-bold">
+                      Order Total:
+                    </td>
+                    <td className="text-end fw-bold">
+                      ${order.total.toFixed(2)}
+                    </td>
                   </tr>
                 </tfoot>
               </Table>
@@ -183,9 +214,13 @@ const OrderHistory = () => {
               <div className="col-md-6 mb-3 mb-md-0">
                 <h6>Shipping Address</h6>
                 <address className="mb-0">
-                  {order.shippingAddress.name}<br />
-                  {order.shippingAddress.address}<br />
-                  {order.shippingAddress.city}, {order.shippingAddress.postalCode}<br />
+                  {order.shippingAddress.name}
+                  <br />
+                  {order.shippingAddress.address}
+                  <br />
+                  {order.shippingAddress.city},{" "}
+                  {order.shippingAddress.postalCode}
+                  <br />
                   {order.shippingAddress.country}
                 </address>
               </div>
@@ -200,8 +235,8 @@ const OrderHistory = () => {
           </Card.Body>
           <Card.Footer className="d-flex justify-content-between align-items-center">
             <div>
-              <Link 
-                to={`/orders/${order.id}`} 
+              <Link
+                to={`/orders/${order.id}`}
                 className="btn btn-sm btn-outline-primary me-2"
               >
                 <FaSearch className="me-1" /> View Details

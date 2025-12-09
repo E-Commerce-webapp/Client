@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 
 const SellerHub = () => {
   const navigate = useNavigate();
-  // Mock Data
   const stats = {
     earnings: 12450.5,
     orders: 24,

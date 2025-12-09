@@ -1,7 +1,6 @@
-import React from 'react';
-import { Container, Card, Button, Row, Col } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
-import { FaCheckCircle, FaShoppingBag, FaHome } from 'react-icons/fa';
+import { Button, Card, Container } from 'react-bootstrap';
+import { FaCheckCircle, FaHome, FaShoppingBag } from 'react-icons/fa';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();

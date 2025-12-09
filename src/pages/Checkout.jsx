@@ -1,114 +1,134 @@
-import React, { useState, useContext } from 'react';
-import { Container, Form, Button, Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useContext } from "react";
+import {
+  Container,
+  Form,
+  Button,
+  Row,
+  Col,
+  Card,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import { CartContext } from "../contexts/CartContext";
-import { createOrder } from '../services/orderService';
+import { createOrder } from "../services/orderService";
 
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    address: '',
-    city: '',
-    country: '',
-    zipCode: '',
-    paymentMethod: 'credit-card',
-    cardNumber: '',
-    cardExpiry: '',
-    cardCvc: '',
+    firstName: "",
+    lastName: "",
+    email: "",
+    address: "",
+    city: "",
+    country: "",
+    zipCode: "",
+    paymentMethod: "credit-card",
+    cardNumber: "",
+    cardExpiry: "",
+    cardCvc: "",
   });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
+    return cart
+      .reduce((total, item) => total + item.price * item.quantity, 0)
+      .toFixed(2);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     // Basic form validation
-    const requiredFields = ['firstName', 'lastName', 'email', 'address', 'city', 'country', 'zipCode'];
-    const missingFields = requiredFields.filter(field => !formData[field].trim());
-    
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "email",
+      "address",
+      "city",
+      "country",
+      "zipCode",
+    ];
+    const missingFields = requiredFields.filter(
+      (field) => !formData[field].trim()
+    );
+
     if (missingFields.length > 0) {
-      setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      setError(
+        `Please fill in all required fields: ${missingFields.join(", ")}`
+      );
       setLoading(false);
       return;
     }
-    
+
     try {
       // Calculate order total
-      const orderTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-      
-      // Prepare order data
+      const shippingCost = 10.0; // Fixed shipping cost for now
+      const taxAmount = 0.0; // Tax calculation can be added later
+
+      // Prepare order data to match backend API
       const orderData = {
-        items: cart.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
+        items: cart.map((item) => ({
+          productId: item.id,
+          productTitle: item.title || item.name,
+          productImage:
+            item.image || item.images?.[0] || "/images/placeholder.jpg",
           quantity: item.quantity,
-          image: item.image || '/images/placeholder.jpg'
+          price: parseFloat(item.price),
+          sellerId: item.sellerId || "default-seller", // This should come from the product
         })),
-        total: orderTotal,
-        customer: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email
-        },
         shippingAddress: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          address: formData.address,
+          fullName: `${formData.firstName} ${formData.lastName}`,
+          addressLine1: formData.address,
+          addressLine2: null,
           city: formData.city,
           postalCode: formData.zipCode,
-          country: formData.country
+          country: formData.country,
+          phoneNumber: formData.email, // Should add phone field to form
         },
-        payment: {
-          method: formData.paymentMethod,
-          status: 'Paid',
-          transactionId: `TXN-${Date.now()}`
-        },
-        status: 'Processing',
-        orderDate: new Date().toISOString()
+        paymentMethod: formData.paymentMethod,
+        shippingCost: shippingCost,
+        taxAmount: taxAmount,
       };
-      
-      console.log('Submitting order:', orderData);
-      
+
+      console.log("Submitting order:", orderData);
+
       // Create the order
       const response = await createOrder(orderData);
       const orderId = response.data?.id;
-      
+
       if (!orderId) {
-        throw new Error('Failed to create order: No order ID returned');
+        throw new Error("Failed to create order: No order ID returned");
       }
-      
-      console.log('Order created successfully:', orderId);
-      
+
+      console.log("Order created successfully:", orderId);
+
       // Clear cart and show success
       clearCart();
       setSuccess(`Order #${orderId} placed successfully!`);
-      
+
       // Redirect to order confirmation after 2 seconds
       setTimeout(() => {
         navigate(`/orders/${orderId}`);
       }, 2000);
-      
     } catch (err) {
-      console.error('Checkout error:', err);
-      setError(err.message || 'Failed to process your order. Please try again.');
+      console.error("Checkout error:", err);
+      setError(
+        err.message || "Failed to process your order. Please try again."
+      );
       setLoading(false);
     }
   };
@@ -118,7 +138,7 @@ const Checkout = () => {
       <Container className="py-5 text-center">
         <h2>Your cart is empty</h2>
         <p>Add some products to your cart before checking out.</p>
-        <Button variant="primary" onClick={() => navigate('/')}>
+        <Button variant="primary" onClick={() => navigate("/")}>
           Continue Shopping
         </Button>
       </Container>
@@ -128,13 +148,13 @@ const Checkout = () => {
   return (
     <Container className="py-5">
       <h2 className="mb-4">Checkout</h2>
-      
+
       {success && (
         <Alert variant="success" className="mb-4">
           {success}
         </Alert>
       )}
-      
+
       {error && (
         <Alert variant="danger" className="mb-4">
           {error}
@@ -253,13 +273,13 @@ const Checkout = () => {
                     id="credit-card"
                     name="paymentMethod"
                     value="credit-card"
-                    checked={formData.paymentMethod === 'credit-card'}
+                    checked={formData.paymentMethod === "credit-card"}
                     onChange={handleChange}
                     label="Credit Card"
                     className="mb-2"
                   />
-                  
-                  {formData.paymentMethod === 'credit-card' && (
+
+                  {formData.paymentMethod === "credit-card" && (
                     <div className="ms-4">
                       <Form.Group className="mb-3">
                         <Form.Label>Card Number</Form.Label>
@@ -309,7 +329,7 @@ const Checkout = () => {
                   id="paypal"
                   name="paymentMethod"
                   value="paypal"
-                  checked={formData.paymentMethod === 'paypal'}
+                  checked={formData.paymentMethod === "paypal"}
                   onChange={handleChange}
                   label="PayPal"
                   className="mb-3"
@@ -320,16 +340,16 @@ const Checkout = () => {
                   id="bank-transfer"
                   name="paymentMethod"
                   value="bank-transfer"
-                  checked={formData.paymentMethod === 'bank-transfer'}
+                  checked={formData.paymentMethod === "bank-transfer"}
                   onChange={handleChange}
                   label="Bank Transfer"
                   className="mb-4"
                 />
 
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  size="lg" 
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
                   className="w-100"
                   disabled={loading}
                 >
@@ -345,7 +365,9 @@ const Checkout = () => {
                       />
                       Processing...
                     </>
-                  ) : 'Place Order'}
+                  ) : (
+                    "Place Order"
+                  )}
                 </Button>
               </Form>
             </Card.Body>
@@ -356,10 +378,13 @@ const Checkout = () => {
           <Card>
             <Card.Body>
               <h5 className="mb-4">Order Summary</h5>
-              
+
               <div className="mb-3">
-                {cart.map(item => (
-                  <div key={item.id} className="d-flex justify-content-between mb-2">
+                {cart.map((item) => (
+                  <div
+                    key={item.id}
+                    className="d-flex justify-content-between mb-2"
+                  >
                     <div>
                       {item.name} × {item.quantity}
                     </div>
@@ -367,33 +392,34 @@ const Checkout = () => {
                   </div>
                 ))}
               </div>
-              
+
               <hr />
-              
+
               <div className="d-flex justify-content-between mb-2">
                 <div>Subtotal</div>
                 <div>${calculateTotal()}</div>
               </div>
-              
+
               <div className="d-flex justify-content-between mb-2">
                 <div>Shipping</div>
                 <div>$0.00</div>
               </div>
-              
+
               <div className="d-flex justify-content-between mb-3">
                 <div>Tax</div>
                 <div>$0.00</div>
               </div>
-              
+
               <hr />
-              
+
               <div className="d-flex justify-content-between fw-bold mb-3">
                 <div>Total</div>
                 <div>${calculateTotal()}</div>
               </div>
-              
+
               <div className="small text-muted">
-                By placing your order, you agree to our Terms of Service and Privacy Policy.
+                By placing your order, you agree to our Terms of Service and
+                Privacy Policy.
               </div>
             </Card.Body>
           </Card>
