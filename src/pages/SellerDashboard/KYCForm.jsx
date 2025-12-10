@@ -32,18 +32,32 @@ const KYCForm = () => {
     setError("");
     
     try {
-      await axios.post(
+      // Prepare the request body to match the backend's expected structure
+      const requestBody = {
+        storeName: formData.storeName,
+        phoneNumber: formData.phoneNumber,
+        businessAddress: formData.businessAddress,
+        businessDescription: formData.businessDescription
+      };
+
+      console.log('Submitting KYC with data:', requestBody);
+      
+      const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/users/submit-kyc`,
-        formData,
+        requestBody,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          withCredentials: true
         }
       );
       
-      setSuccess("Verification email sent! Please check your inbox to complete the seller registration.");
+      console.log('KYC submission response:', response.data);
+      
+      setSuccess(response.data.message || "Verification email sent! Please check your inbox to complete the seller registration.");
       setFormData({
         storeName: "",
         phoneNumber: "",
@@ -52,7 +66,38 @@ const KYCForm = () => {
       });
     } catch (err) {
       console.error("Error submitting KYC:", err);
-      setError(err.response?.data?.message || "Failed to submit KYC. Please try again.");
+      
+      // Log complete error response for debugging
+      if (err.response) {
+        console.error('Response data:', err.response.data);
+        console.error('Response status:', err.response.status);
+        console.error('Response headers:', err.response.headers);
+      } else if (err.request) {
+        console.error('No response received:', err.request);
+      } else {
+        console.error('Error message:', err.message);
+      }
+      
+      // Extract error message
+      let errorMessage = "Failed to submit KYC. Please try again.";
+      if (err.response?.data) {
+        // Try to get the most specific error message
+        errorMessage = err.response.data.message || 
+                      (typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data));
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      
+      // Log to console for debugging
+      console.error('Error details:', {
+        config: err.config,
+        request: err.request,
+        response: err.response,
+        message: err.message,
+        stack: err.stack
+      });
     } finally {
       setSubmitting(false);
     }
