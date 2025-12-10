@@ -34,16 +34,16 @@ const KYCForm = () => {
     try {
       // Prepare the request body to match the backend's expected structure
       const requestBody = {
-        storeName: formData.storeName,
+        name: formData.storeName,
         phoneNumber: formData.phoneNumber,
-        businessAddress: formData.businessAddress,
-        businessDescription: formData.businessDescription
+        address: formData.businessAddress,
+        description: formData.businessDescription
       };
-
+      console.log('Token used for KYC:', token);
       console.log('Submitting KYC with data:', requestBody);
       
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/users/become-seller`,
+        `${import.meta.env.VITE_API_BASE_URL}/users/become-seller`,
         requestBody,
         {
           headers: {
@@ -54,7 +54,7 @@ const KYCForm = () => {
           withCredentials: true
         }
       );
-      
+
       console.log('KYC submission response:', response.data);
       
       setSuccess(response.data.message || "Verification email sent! Please check your inbox to complete the seller registration.");
