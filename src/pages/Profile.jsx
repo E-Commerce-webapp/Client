@@ -26,6 +26,7 @@ const Profile = () => {
           }
         });
         
+        console.log('API Response:', response.data);
         if (response.data) {
           setUserData({
             ...response.data,
