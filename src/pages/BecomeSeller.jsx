@@ -20,7 +20,7 @@ const BecomeSeller = () => {
 
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/users/me`,
+          `${import.meta.env.VITE_API_BASE_URL}/users`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

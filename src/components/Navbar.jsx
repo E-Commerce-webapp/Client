@@ -23,7 +23,7 @@ export default function Navbar() {
       }
       
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/users/me`, {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/users`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
