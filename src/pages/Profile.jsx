@@ -19,16 +19,26 @@ const Profile = () => {
       }
 
       try {
-        const response = await axios.get(`${baseUrl}/users/me`, {
+        const response = await axios.get(`${baseUrl}/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-        setUserData(response.data);
+        
+        if (response.data) {
+          setUserData({
+            ...response.data,
+            // Map any fields if needed
+          });
+        }
       } catch (err) {
         console.error('Error fetching user data:', err);
-        setError('Failed to load profile data');
+        setError('Failed to load profile data. Please try again later.');
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
@@ -65,13 +75,19 @@ const Profile = () => {
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <div>
-                    <h4>{userData.name || 'User'}</h4>
+                    <h4>{userData.firstName} {userData.lastName}</h4>
                     <p className="text-muted mb-0">{userData.email}</p>
+                    {userData.isASeller && <span className="badge bg-success">Seller</span>}
+                    {userData.emailConfirm ? (
+                      <span className="badge bg-success ms-2">Email Verified</span>
+                    ) : (
+                      <span className="badge bg-warning text-dark ms-2">Email Not Verified</span>
+                    )}
                   </div>
-                  <div className="rounded-circle bg-secondary d-flex align-items-center justify-content-center" 
+                  <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
                        style={{ width: '80px', height: '80px' }}>
                     <span className="text-white display-5">
-                      {userData.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+                      {userData.firstName ? userData.firstName.charAt(0).toUpperCase() : 'U'}
                     </span>
                   </div>
                 </div>
@@ -81,20 +97,36 @@ const Profile = () => {
                   <hr className="my-2" />
                   <div className="row">
                     <div className="col-md-6">
-                      <p className="mb-1"><strong>Name:</strong></p>
-                      <p>{userData.name || 'Not provided'}</p>
+                      <p className="mb-1"><strong>First Name:</strong></p>
+                      <p>{userData.firstName || 'Not provided'}</p>
                     </div>
                     <div className="col-md-6">
+                      <p className="mb-1"><strong>Last Name:</strong></p>
+                      <p>{userData.lastName || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="row mt-3">
+                    <div className="col-12">
                       <p className="mb-1"><strong>Email:</strong></p>
                       <p>{userData.email}</p>
                     </div>
                   </div>
-                  {userData.phone && (
-                    <div>
-                      <p className="mb-1"><strong>Phone:</strong></p>
-                      <p>{userData.phone}</p>
+                  <div className="row mt-3">
+                    <div className="col-12">
+                      <p className="mb-1"><strong>Address:</strong></p>
+                      <p>{userData.address || 'Not provided'}</p>
                     </div>
-                  )}
+                  </div>
+                  <div className="row mt-3">
+                    <div className="col-md-6">
+                      <p className="mb-1"><strong>Account Type:</strong></p>
+                      <p>{userData.isASeller ? 'Seller' : 'Buyer'}</p>
+                    </div>
+                    <div className="col-md-6">
+                      <p className="mb-1"><strong>Email Status:</strong></p>
+                      <p>{userData.emailConfirm ? 'Verified' : 'Not Verified'}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (

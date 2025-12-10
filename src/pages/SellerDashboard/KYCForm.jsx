@@ -43,7 +43,7 @@ const KYCForm = () => {
       console.log('Submitting KYC with data:', requestBody);
       
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/users/submit-kyc`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/users/become-seller`,
         requestBody,
         {
           headers: {
