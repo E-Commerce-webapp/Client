@@ -15,6 +15,8 @@ import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import KYCForm from "./pages/SellerDashboard/KYCForm";
+import SellerLayout from "./pages/SellerDashboard/SellerLayout";
+import SellerStore from "./pages/SellerDashboard/SellerStore";
 import BecomeSeller from "./pages/BecomeSeller";
 import SellProduct from "./pages/SellProduct";
 import Profile from "./pages/Profile";
@@ -68,6 +70,13 @@ export default function App() {
           <Route path="/seller" element={
             <ProtectedRoute>
               <SellerDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/seller/store" element={
+            <ProtectedRoute>
+              <SellerLayout>
+                <SellerStore />
+              </SellerLayout>
             </ProtectedRoute>
           } />
           <Route path="/sell" element={

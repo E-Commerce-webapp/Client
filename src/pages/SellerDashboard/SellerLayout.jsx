@@ -17,6 +17,9 @@ const SellerLayout = ({ children }) => {
               <Nav.Link as={NavLink} to="/orders" className="text-dark mb-2">
                 My Orders
               </Nav.Link>
+              <Nav.Link as={NavLink} to="/seller/store" className="text-dark mb-2">
+                Store
+              </Nav.Link>
               <Nav.Link
                 as={NavLink}
                 to="/seller"
