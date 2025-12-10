@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, Row, Col, Badge, Spinner, Alert } from "react-bootstrap";
 import axios from "axios";
+import ProductCard from "../../components/ProductCard";
 
 const SellerStore = () => {
   const [store, setStore] = useState(null);
@@ -39,7 +40,8 @@ const SellerStore = () => {
           },
         });
 
-        setStore(storeRes.data);
+        const currentStore = storeRes.data;
+        setStore(currentStore);
 
         // Fetch all internal products and filter by this seller (store owner)
         const productsRes = await axios.get(`${baseUrl}/products`, {
@@ -50,7 +52,7 @@ const SellerStore = () => {
 
         const allProducts = productsRes.data || [];
         const sellerProducts = allProducts.filter(
-          (p) => p.sellerId === user.id
+          (p) => p.storeId === currentStore.id
         );
         setProducts(sellerProducts);
       } catch (err) {
@@ -153,30 +155,7 @@ const SellerStore = () => {
       ) : (
         <Row className="g-3">
           {products.map((product) => (
-            <Col key={product.id} md={4} lg={3}>
-              <Card className="h-100 border-0 shadow-sm">
-                {product.images && product.images[0] && (
-                  <Card.Img
-                    variant="top"
-                    src={product.images[0]}
-                    alt={product.title}
-                    style={{ objectFit: "cover", height: "160px" }}
-                  />
-                )}
-                <Card.Body>
-                  <h6 className="fw-bold text-truncate" title={product.title}>
-                    {product.title}
-                  </h6>
-                  <div className="text-muted small mb-2 text-truncate" title={product.category}>
-                    {product.category}
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="fw-bold">${product.price}</span>
-                    <span className="text-muted small">Stock: {product.stock}</span>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
+            <ProductCard key={product.id} product={product} />
           ))}
         </Row>
       )}

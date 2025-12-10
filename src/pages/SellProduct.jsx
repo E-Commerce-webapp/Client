@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Container, Form, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { isTokenValid } from "../utils/auth";
+import api from "../utils/api";
 
 const SellProduct = () => {
   const [formData, setFormData] = useState({
@@ -11,12 +12,50 @@ const SellProduct = () => {
     category: "",
     stock: 1,
     image: null,
+    imageBase64: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [isStoreLoading, setIsStoreLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const initStore = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        setError("Your session has expired. Please log in again.");
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
+      try {
+        setIsStoreLoading(true);
+        // Fetch current user to get their backend id
+        const userRes = await api.get("/users");
+        const user = userRes.data;
+        if (!user || !user.id) {
+          throw new Error("User information is missing.");
+        }
+
+        const response = await api.get(`/stores/user/${user.id}`);
+        setStoreId(response.data.id);
+      } catch (err) {
+        console.error("Error fetching store:", err);
+        setError(
+          err.response?.data?.message ||
+            "Unable to load your store information. Please make sure you have an active store."
+        );
+      } finally {
+        setIsStoreLoading(false);
+      }
+    };
+
+    initStore();
+  }, [navigate]);
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -39,6 +78,10 @@ const SellProduct = () => {
       setError("Please select an image");
       return false;
     }
+    if (!storeId) {
+      setError("Could not determine your store. Please ensure you have an active store.");
+      return false;
+    }
     return true;
   };
 
@@ -58,8 +101,18 @@ const SellProduct = () => {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, image: file }));
-    setError(""); // Clear any previous errors
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setFormData((prev) => ({
+        ...prev,
+        image: file,
+        imageBase64: typeof base64String === "string" ? base64String : "",
+      }));
+      setError("");
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleChange = (e) => {
@@ -92,19 +145,29 @@ const SellProduct = () => {
 
     try {
       setIsLoading(true);
+      const payload = {
+        title: formData.name,
+        description: formData.description,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        stock: Number(formData.stock),
+        images: formData.imageBase64,
+        storeId: storeId,
+      };
 
-      const formDataToSend = new FormData();
-      formDataToSend.append("name", formData.name);
-      formDataToSend.append("description", formData.description);
-      formDataToSend.append("price", formData.price.toString());
-      formDataToSend.append("category", formData.category);
-      formDataToSend.append("stock", formData.stock.toString());
+      const response = await api.post("/products", payload);
 
-      if (formData.image) {
-        formDataToSend.append("image", formData.image);
-      }
-
-      // Rest of your success handling...
+      console.log("Product created:", response.data);
+      setSuccess("Product listed successfully!");
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        stock: 1,
+        image: null,
+        imageBase64: "",
+      });
     } catch (err) {
       console.error("Error details:", {
         message: err.message,
@@ -223,7 +286,7 @@ const SellProduct = () => {
               accept="image/*"
               onChange={handleImageChange}
               required
-              disabled={isLoading}
+              disabled={isLoading || isStoreLoading}
             />
             <Form.Text className="text-muted">
               Upload a clear photo of your product (max 5MB)
@@ -235,7 +298,7 @@ const SellProduct = () => {
               variant="primary"
               type="submit"
               size="lg"
-              disabled={isLoading}
+              disabled={isLoading || isStoreLoading}
             >
               {isLoading ? (
                 <>
@@ -250,7 +313,7 @@ const SellProduct = () => {
                   Listing...
                 </>
               ) : (
-                "List Product for Sale"
+                isStoreLoading ? "Loading your store..." : "List Product for Sale"
               )}
             </Button>
           </div>

@@ -33,9 +33,11 @@ export default function ProductCard({ product }) {
         />
         <div className="card-body d-flex flex-column">
           <h5 className="card-title">{product.title}</h5>
-          <p className="card-text text-muted small mb-2">
-            Sold by: <span className="text-primary">{product.seller_name}</span>
-          </p>
+          {product.store?.name && (
+            <p className="card-text text-muted small mb-2">
+              Store: <span className="text-primary">{product.store.name}</span>
+            </p>
+          )}
           <p className="card-text text-muted small">
             {product.description.length > 100 
               ? `${product.description.substring(0, 100)}...` 
