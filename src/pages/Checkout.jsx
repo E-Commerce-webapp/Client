@@ -38,6 +38,7 @@ const Checkout = () => {
   const [savePayment, setSavePayment] = useState(true);
   const [pendingOrderId, setPendingOrderId] = useState(null);
   const [savingInfo, setSavingInfo] = useState(false);
+  const [userSavedInfo, setUserSavedInfo] = useState({ hasShipping: false, hasPayment: false });
   const navigate = useNavigate();
 
   // Load saved info on mount
@@ -46,6 +47,12 @@ const Checkout = () => {
       try {
         const response = await api.get('/users');
         const user = response.data;
+        
+        // Track what the user already has saved
+        setUserSavedInfo({
+          hasShipping: !!user.savedShippingAddress,
+          hasPayment: !!user.savedPaymentMethod,
+        });
         
         if (user.savedShippingAddress) {
           const nameParts = user.savedShippingAddress.fullName.split(' ');
@@ -167,13 +174,19 @@ const Checkout = () => {
       setSuccess(`Order #${orderId} placed successfully!`);
       setPendingOrderId(orderId);
       
-      // Show save info modal if using credit card
-      if (formData.paymentMethod === 'credit-card') {
+      // Only show save modal if user doesn't have saved info yet
+      const needsShippingSave = !userSavedInfo.hasShipping;
+      const needsPaymentSave = !userSavedInfo.hasPayment && formData.paymentMethod === 'credit-card';
+      
+      if (needsShippingSave || needsPaymentSave) {
+        setSaveShipping(needsShippingSave);
+        setSavePayment(needsPaymentSave);
         setShowSaveModal(true);
       } else {
-        // For non-credit card, just ask about shipping
-        setShowSaveModal(true);
-        setSavePayment(false);
+        // User already has saved info, go directly to order page
+        setTimeout(() => {
+          navigate(`/orders/${orderId}`);
+        }, 1500);
       }
     } catch (err) {
       console.error("Checkout error:", err);
@@ -538,16 +551,18 @@ const Checkout = () => {
         <Modal.Body>
           <p>Would you like to save your information for faster checkout next time?</p>
           
-          <Form.Check
-            type="checkbox"
-            id="save-shipping"
-            label="Save shipping address"
-            checked={saveShipping}
-            onChange={(e) => setSaveShipping(e.target.checked)}
-            className="mb-2"
-          />
+          {!userSavedInfo.hasShipping && (
+            <Form.Check
+              type="checkbox"
+              id="save-shipping"
+              label="Save shipping address"
+              checked={saveShipping}
+              onChange={(e) => setSaveShipping(e.target.checked)}
+              className="mb-2"
+            />
+          )}
           
-          {formData.paymentMethod === 'credit-card' && (
+          {!userSavedInfo.hasPayment && formData.paymentMethod === 'credit-card' && (
             <Form.Check
               type="checkbox"
               id="save-payment"
