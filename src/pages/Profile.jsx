@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Container, Spinner, Alert } from 'react-bootstrap';
+import { Button, Card, Container, Spinner, Alert, Modal, Form, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
 
 const Profile = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showShippingModal, setShowShippingModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [shippingForm, setShippingForm] = useState({
+    fullName: '',
+    addressLine1: '',
+    city: '',
+    postalCode: '',
+    country: '',
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    cardLastFour: '',
+    cardExpiry: '',
+    cardType: '',
+  });
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const token = localStorage.getItem('token');
@@ -51,6 +66,90 @@ const Profile = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+  };
+
+  const openShippingModal = () => {
+    if (userData?.savedShippingAddress) {
+      setShippingForm({
+        fullName: userData.savedShippingAddress.fullName || '',
+        addressLine1: userData.savedShippingAddress.addressLine1 || '',
+        city: userData.savedShippingAddress.city || '',
+        postalCode: userData.savedShippingAddress.postalCode || '',
+        country: userData.savedShippingAddress.country || '',
+      });
+    } else {
+      setShippingForm({
+        fullName: `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim(),
+        addressLine1: '',
+        city: '',
+        postalCode: '',
+        country: '',
+      });
+    }
+    setShowShippingModal(true);
+  };
+
+  const openPaymentModal = () => {
+    if (userData?.savedPaymentMethod) {
+      setPaymentForm({
+        cardLastFour: userData.savedPaymentMethod.cardLastFour || '',
+        cardExpiry: userData.savedPaymentMethod.cardExpiry || '',
+        cardType: userData.savedPaymentMethod.cardType || '',
+      });
+    } else {
+      setPaymentForm({
+        cardLastFour: '',
+        cardExpiry: '',
+        cardType: '',
+      });
+    }
+    setShowPaymentModal(true);
+  };
+
+  const handleSaveShipping = async () => {
+    setSaving(true);
+    try {
+      const response = await axios.put(
+        `${baseUrl}/users/checkout-info`,
+        { shippingAddress: shippingForm },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      setUserData(response.data);
+      setShowShippingModal(false);
+    } catch (err) {
+      console.error('Error saving shipping address:', err);
+      setError('Failed to save shipping address.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSavePayment = async () => {
+    setSaving(true);
+    try {
+      const response = await axios.put(
+        `${baseUrl}/users/checkout-info`,
+        { paymentMethod: paymentForm },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      setUserData(response.data);
+      setShowPaymentModal(false);
+    } catch (err) {
+      console.error('Error saving payment method:', err);
+      setError('Failed to save payment method.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -129,6 +228,63 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Saved Shipping Address Section */}
+                <div className="mb-4">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0">Saved Shipping Address</h5>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm"
+                      onClick={openShippingModal}
+                    >
+                      {userData.savedShippingAddress ? 'Edit' : 'Add'}
+                    </Button>
+                  </div>
+                  <hr className="my-2" />
+                  {userData.savedShippingAddress ? (
+                    <div>
+                      <p className="mb-1"><strong>{userData.savedShippingAddress.fullName}</strong></p>
+                      <p className="mb-1">{userData.savedShippingAddress.addressLine1}</p>
+                      <p className="mb-1">
+                        {userData.savedShippingAddress.city}, {userData.savedShippingAddress.postalCode}
+                      </p>
+                      <p className="mb-0">{userData.savedShippingAddress.country}</p>
+                    </div>
+                  ) : (
+                    <p className="text-muted">No saved shipping address.</p>
+                  )}
+                </div>
+
+                {/* Saved Payment Method Section */}
+                <div className="mb-4">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0">Saved Payment Method</h5>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm"
+                      onClick={openPaymentModal}
+                    >
+                      {userData.savedPaymentMethod ? 'Edit' : 'Add'}
+                    </Button>
+                  </div>
+                  <hr className="my-2" />
+                  {userData.savedPaymentMethod ? (
+                    <div className="d-flex align-items-center">
+                      <div className="me-3">
+                        <i className="bi bi-credit-card fs-3"></i>
+                      </div>
+                      <div>
+                        <p className="mb-1">
+                          <strong>{userData.savedPaymentMethod.cardType || 'Card'}</strong> ending in {userData.savedPaymentMethod.cardLastFour}
+                        </p>
+                        <p className="mb-0 text-muted">Expires: {userData.savedPaymentMethod.cardExpiry}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted">No saved payment method.</p>
+                  )}
+                </div>
               </div>
             ) : (
               <p>No user data available</p>
@@ -153,6 +309,151 @@ const Profile = () => {
           </Card.Body>
         </Card>
       </div>
+
+      {/* Shipping Address Modal */}
+      <Modal show={showShippingModal} onHide={() => setShowShippingModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {userData?.savedShippingAddress ? 'Edit Shipping Address' : 'Add Shipping Address'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Full Name</Form.Label>
+              <Form.Control
+                type="text"
+                value={shippingForm.fullName}
+                onChange={(e) => setShippingForm({ ...shippingForm, fullName: e.target.value })}
+                placeholder="John Doe"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Address</Form.Label>
+              <Form.Control
+                type="text"
+                value={shippingForm.addressLine1}
+                onChange={(e) => setShippingForm({ ...shippingForm, addressLine1: e.target.value })}
+                placeholder="123 Main Street"
+              />
+            </Form.Group>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>City</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={shippingForm.city}
+                    onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
+                    placeholder="New York"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Postal Code</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={shippingForm.postalCode}
+                    onChange={(e) => setShippingForm({ ...shippingForm, postalCode: e.target.value })}
+                    placeholder="10001"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Country</Form.Label>
+              <Form.Control
+                as="select"
+                value={shippingForm.country}
+                onChange={(e) => setShippingForm({ ...shippingForm, country: e.target.value })}
+              >
+                <option value="">Select a country</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="UK">United Kingdom</option>
+                <option value="AU">Australia</option>
+                <option value="DE">Germany</option>
+                <option value="FI">Finland</option>
+                <option value="JP">Japan</option>
+              </Form.Control>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowShippingModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSaveShipping}
+            disabled={saving || !shippingForm.fullName || !shippingForm.addressLine1 || !shippingForm.city || !shippingForm.postalCode || !shippingForm.country}
+          >
+            {saving ? <><Spinner size="sm" className="me-2" />Saving...</> : 'Save'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Payment Method Modal */}
+      <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {userData?.savedPaymentMethod ? 'Edit Payment Method' : 'Add Payment Method'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Card Type</Form.Label>
+              <Form.Control
+                as="select"
+                value={paymentForm.cardType}
+                onChange={(e) => setPaymentForm({ ...paymentForm, cardType: e.target.value })}
+              >
+                <option value="">Select card type</option>
+                <option value="Visa">Visa</option>
+                <option value="Mastercard">Mastercard</option>
+                <option value="Amex">American Express</option>
+                <option value="Discover">Discover</option>
+              </Form.Control>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Last 4 Digits</Form.Label>
+              <Form.Control
+                type="text"
+                maxLength={4}
+                value={paymentForm.cardLastFour}
+                onChange={(e) => setPaymentForm({ ...paymentForm, cardLastFour: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                placeholder="1234"
+              />
+              <Form.Text className="text-muted">
+                For security, only the last 4 digits are stored.
+              </Form.Text>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Expiry Date</Form.Label>
+              <Form.Control
+                type="text"
+                value={paymentForm.cardExpiry}
+                onChange={(e) => setPaymentForm({ ...paymentForm, cardExpiry: e.target.value })}
+                placeholder="MM/YY"
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSavePayment}
+            disabled={saving || !paymentForm.cardLastFour || !paymentForm.cardExpiry}
+          >
+            {saving ? <><Spinner size="sm" className="me-2" />Saving...</> : 'Save'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };
