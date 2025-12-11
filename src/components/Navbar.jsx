@@ -5,6 +5,7 @@ import { isTokenValid } from "../utils/auth";
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Dropdown } from 'react-bootstrap';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
   const { cartCount } = useCart();
@@ -118,6 +119,13 @@ export default function Navbar() {
                     <span className="d-none d-md-inline">Become a Seller</span>
                   </NavLink>
                 )}
+              </li>
+            )}
+
+            {/* Notifications */}
+            {loggedIn && (
+              <li className="nav-item me-2">
+                <NotificationDropdown />
               </li>
             )}
 

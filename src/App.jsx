@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "./contexts/CartContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -60,81 +61,83 @@ export default function App() {
 
   return (
     <CartProvider>
-      <Navbar />
-      <div className="container mt-4">
-        <Routes>
-          <Route path="/" element={<Home products={products} loading={loading} />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/become-seller" element={<BecomeSeller />} />
-          <Route path="/seller/kyc" element={
-            <ProtectedRoute>
-              <KYCForm />
-            </ProtectedRoute>
-          } />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/products/:productId" element={<ProductDetail products={products} />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/store/:storeId" element={<StorePage />} />
-          
-          {/* Protected Routes */}
-          <Route path="/seller" element={
-            <ProtectedRoute>
-              <SellerDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/seller/store" element={
-            <ProtectedRoute>
-              <SellerLayout>
-                <SellerStore />
-              </SellerLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/seller/orders" element={
-            <ProtectedRoute>
-              <SellerLayout>
-                <SellerOrders />
-              </SellerLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/seller/orders/:orderId" element={
-            <ProtectedRoute>
-              <SellerLayout>
-                <SellerOrderDetail />
-              </SellerLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/sell" element={
-            <ProtectedRoute>
-              <SellProduct />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/checkout" element={
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          } />
-          <Route path="/order-confirmation/:orderId" element={
-            <ProtectedRoute>
-              <OrderConfirmation />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute>
-              <OrderHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders/:orderId" element={
-            <ProtectedRoute>
-              <OrderDetail />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </div>
+      <NotificationProvider>
+        <Navbar />
+        <div className="container mt-4">
+          <Routes>
+            <Route path="/" element={<Home products={products} loading={loading} />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/become-seller" element={<BecomeSeller />} />
+            <Route path="/seller/kyc" element={
+              <ProtectedRoute>
+                <KYCForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/products/:productId" element={<ProductDetail products={products} />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/store/:storeId" element={<StorePage />} />
+            
+            {/* Protected Routes */}
+            <Route path="/seller" element={
+              <ProtectedRoute>
+                <SellerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/store" element={
+              <ProtectedRoute>
+                <SellerLayout>
+                  <SellerStore />
+                </SellerLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/orders" element={
+              <ProtectedRoute>
+                <SellerLayout>
+                  <SellerOrders />
+                </SellerLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/orders/:orderId" element={
+              <ProtectedRoute>
+                <SellerLayout>
+                  <SellerOrderDetail />
+                </SellerLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/sell" element={
+              <ProtectedRoute>
+                <SellProduct />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/checkout" element={
+              <ProtectedRoute>
+                <Checkout />
+              </ProtectedRoute>
+            } />
+            <Route path="/order-confirmation/:orderId" element={
+              <ProtectedRoute>
+                <OrderConfirmation />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute>
+                <OrderHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders/:orderId" element={
+              <ProtectedRoute>
+                <OrderDetail />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </div>
+      </NotificationProvider>
     </CartProvider>
   );
 }

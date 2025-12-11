@@ -213,7 +213,13 @@ const SellerOrderDetail = () => {
           >
             <FaPrint className="me-1" /> Print
           </Button>
-          <Button variant="primary" onClick={() => setShowStatusModal(true)}>
+          <Button variant="primary" onClick={() => {
+            const available = getAvailableStatuses();
+            if (available.length > 0) {
+              setNewStatus(available[0].value);
+            }
+            setShowStatusModal(true);
+          }}>
             <FaEdit className="me-1" /> Update Status
           </Button>
         </div>
@@ -231,7 +237,13 @@ const SellerOrderDetail = () => {
             bg={getStatusVariant(order.status)}
             className="fs-6 p-2"
             style={{ cursor: "pointer" }}
-            onClick={() => setShowStatusModal(true)}
+            onClick={() => {
+              const available = getAvailableStatuses();
+              if (available.length > 0) {
+                setNewStatus(available[0].value);
+              }
+              setShowStatusModal(true);
+            }}
           >
             {order.status}
           </Badge>
