@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Login from "./pages/LoginPage/Login";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
+import StorePage from "./pages/StorePage";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/products/:productId" element={<ProductDetail products={products} />} />
           <Route path="/search" element={<SearchResults />} />
+          <Route path="/store/:storeId" element={<StorePage />} />
           
           {/* Protected Routes */}
           <Route path="/seller" element={

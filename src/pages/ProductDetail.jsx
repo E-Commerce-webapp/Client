@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import api from '../utils/api';
@@ -7,6 +7,7 @@ import ReviewList from '../components/ReviewList';
 
 export default function ProductDetail({ products }) {
   const { productId } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -85,8 +86,20 @@ export default function ProductDetail({ products }) {
         </div>
         <div className="col-md-6">
           <h2>{product.title}</h2>
-          {/* External products don’t have seller info, so just hide for now */}
-          {/* <p className="text-muted">Sold by: something</p> */}
+          <p className="text-muted mb-2">
+            Store:{' '}
+            {product.storeName && product.storeId ? (
+              <span
+                className="text-primary"
+                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => navigate(`/store/${product.storeId}`)}
+              >
+                {product.storeName}
+              </span>
+            ) : (
+              <span className="text-secondary">Unknown</span>
+            )}
+          </p>
           <h4 className="my-3">${product.price.toFixed(2)}</h4>
           <p className="mb-4">{product.description}</p>
           

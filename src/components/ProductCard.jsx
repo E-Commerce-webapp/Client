@@ -34,7 +34,21 @@ export default function ProductCard({ product }) {
         <div className="card-body d-flex flex-column">
           <h5 className="card-title">{product.title}</h5>
           <p className="card-text text-muted small mb-2">
-            Store: <span className="text-primary">{product.storeName || 'Unknown'}</span>
+            Store:{' '}
+            {product.storeName && product.storeId ? (
+              <span
+                className="text-primary"
+                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/store/${product.storeId}`);
+                }}
+              >
+                {product.storeName}
+              </span>
+            ) : (
+              <span className="text-secondary">Unknown</span>
+            )}
           </p>
           <p className="card-text text-muted small">
             {product.description.length > 100 
