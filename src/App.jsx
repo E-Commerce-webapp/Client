@@ -32,9 +32,15 @@ export default function App() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${baseUrl}/products/external`);
-      console.log("Fetched products:", response.data);
-      setProducts(response.data);
+      const externalRes = await axios.get(`${baseUrl}/products/external`);
+      const internalRes = await axios.get(`${baseUrl}/products`);
+
+      const externalProducts = externalRes.data || [];
+      const internalProducts = internalRes.data || [];
+
+      const merged = [...internalProducts, ...externalProducts];
+      console.log("Fetched products (external + internal):", merged);
+      setProducts(merged);
     } catch (error) {
       console.error("Error fetching products:", error);
       if (!isTokenValid(token)) {
