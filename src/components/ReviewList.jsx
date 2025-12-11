@@ -112,6 +112,7 @@ export default function ReviewList({ productId, refreshTrigger }) {
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
+                    <h6 className="mb-1">{review.userName}</h6>
                     <div className="mb-2">{renderStars(review.rating)}</div>
                     <p className="card-text">{review.reviewText}</p>
                     <small className="text-muted">
