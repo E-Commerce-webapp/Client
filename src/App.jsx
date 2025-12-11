@@ -18,6 +18,8 @@ import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import KYCForm from "./pages/SellerDashboard/KYCForm";
 import SellerLayout from "./pages/SellerDashboard/SellerLayout";
 import SellerStore from "./pages/SellerDashboard/SellerStore";
+import SellerOrders from "./pages/SellerDashboard/SellerOrders";
+import SellerOrderDetail from "./pages/SellerDashboard/SellerOrderDetail";
 import BecomeSeller from "./pages/BecomeSeller";
 import SellProduct from "./pages/SellProduct";
 import Profile from "./pages/Profile";
@@ -84,6 +86,20 @@ export default function App() {
             <ProtectedRoute>
               <SellerLayout>
                 <SellerStore />
+              </SellerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/seller/orders" element={
+            <ProtectedRoute>
+              <SellerLayout>
+                <SellerOrders />
+              </SellerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/seller/orders/:orderId" element={
+            <ProtectedRoute>
+              <SellerLayout>
+                <SellerOrderDetail />
               </SellerLayout>
             </ProtectedRoute>
           } />
