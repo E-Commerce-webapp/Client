@@ -1,14 +1,43 @@
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
+import api from '../utils/api';
 
 export default function ProductDetail({ products }) {
   const { productId } = useParams();
-  const product = products.find(p => p.id === productId); 
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
-  if (!products || products.length === 0) {
+  useEffect(() => {
+    const loadProduct = async () => {
+      // 1) Try external products first
+      const fromExternal = products.find(
+        (p) => String(p.id) === String(productId)
+      );
+      if (fromExternal) {
+        setProduct(fromExternal);
+        setLoading(false);
+        return;
+      }
+
+      // 2) Fallback: fetch single internal product by id
+      try {
+        const res = await api.get(`/products/${productId}`);
+        setProduct(res.data);
+      } catch (error) {
+        console.error('Error fetching internal product by id:', error);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId, products]);
+
+  if (loading) {
     return <div className="container mt-4">Loading product...</div>;
   }
 
