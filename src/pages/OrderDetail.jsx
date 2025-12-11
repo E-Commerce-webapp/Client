@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Container, Card, Button, Row, Col, Badge, Alert, Spinner } from 'react-bootstrap';
-import { FaArrowLeft, FaPrint, FaEnvelope, FaMapMarkerAlt, FaCreditCard, FaTruck, FaCheckCircle, FaHome, FaShoppingBag } from 'react-icons/fa';
-import { getOrderById } from '../services/orderService';
+import { FaArrowLeft, FaPrint, FaEnvelope, FaMapMarkerAlt, FaCreditCard, FaTruck, FaCheckCircle, FaHome, FaShoppingBag, FaTimes } from 'react-icons/fa';
+import { getOrderById, cancelOrder } from '../services/orderService';
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -10,6 +10,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -77,6 +78,28 @@ const OrderDetail = () => {
   const handleEmailInvoice = () => {
     // In a real app, this would trigger an email with the invoice
     alert('This would send an email with the order details in a real application.');
+  };
+
+  const handleCancelOrder = async () => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) {
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      await cancelOrder(orderId);
+      // Refresh order data
+      const response = await getOrderById(orderId);
+      if (response.data) {
+        setOrder(response.data);
+      }
+      alert('Order cancelled successfully.');
+    } catch (err) {
+      console.error('Error cancelling order:', err);
+      alert(err.response?.data?.error || 'Failed to cancel order. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   if (loading) {
@@ -154,7 +177,7 @@ const OrderDetail = () => {
         <Card.Header className="d-flex justify-content-between align-items-center">
           <div>
             <h4 className="mb-0">Order #{order.id}</h4>
-            <small className="text-muted">Placed on {formatDate(order.date)}</small>
+            <small className="text-muted">Placed on {formatDate(order.createdAt)}</small>
           </div>
           <Badge bg={getStatusVariant(order.status)} className="fs-6 p-2">
             {order.status}
@@ -172,8 +195,8 @@ const OrderDetail = () => {
                 </Card.Header>
                 <Card.Body>
                   <address className="mb-0">
-                    <strong>{order.shippingAddress.name}</strong><br />
-                    {order.shippingAddress.address}<br />
+                    <strong>{order.shippingAddress.fullName}</strong><br />
+                    {order.shippingAddress.addressLine1}<br />
                     {order.shippingAddress.city}, {order.shippingAddress.postalCode}<br />
                     {order.shippingAddress.country}
                   </address>
@@ -195,7 +218,7 @@ const OrderDetail = () => {
                     <div>
                       <div className="fw-bold">{order.paymentMethod}</div>
                       <div className="text-success">
-                        <FaCheckCircle className="me-1" /> {order.paymentStatus}
+                        <FaCheckCircle className="me-1" /> Paid
                       </div>
                     </div>
                   </div>
@@ -212,20 +235,20 @@ const OrderDetail = () => {
                 <Card.Body>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Subtotal:</span>
-                    <span>${(order.total * 0.8).toFixed(2)}</span>
+                    <span>${order.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Shipping:</span>
-                    <span>${(order.total * 0.05).toFixed(2)}</span>
+                    <span>${order.shippingCost.toFixed(2)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-2">
-                    <span>Tax (20%):</span>
-                    <span>${(order.total * 0.15).toFixed(2)}</span>
+                    <span>Tax:</span>
+                    <span>${order.taxAmount.toFixed(2)}</span>
                   </div>
                   <hr />
                   <div className="d-flex justify-content-between fw-bold">
                     <span>Total:</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>${order.totalAmount.toFixed(2)}</span>
                   </div>
                 </Card.Body>
               </Card>
@@ -250,17 +273,20 @@ const OrderDetail = () => {
                     <td>
                       <div className="d-flex align-items-center">
                         <img 
-                          src={item.image} 
-                          alt={item.name}
+                          src={item.productImage} 
+                          alt={item.productTitle}
                           style={{ width: '60px', height: '60px', objectFit: 'cover', marginRight: '15px' }}
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/60';
+                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E";
                           }}
                         />
                         <div>
-                          <div className="fw-bold">{item.name}</div>
-                          <small className="text-muted">SKU: {item.id}</small>
+                          <Link to={`/products/${item.productId}`} className="fw-bold text-decoration-none text-dark">
+                            {item.productTitle}
+                          </Link>
+                          <br />
+                          <small className="text-muted">ID: {item.productId}</small>
                         </div>
                       </div>
                     </td>
@@ -273,19 +299,19 @@ const OrderDetail = () => {
               <tfoot>
                 <tr>
                   <td colSpan="3" className="text-end fw-bold">Subtotal:</td>
-                  <td className="text-end">${(order.total * 0.8).toFixed(2)}</td>
+                  <td className="text-end">${order.subtotal.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td colSpan="3" className="text-end fw-bold">Shipping:</td>
-                  <td className="text-end">${(order.total * 0.05).toFixed(2)}</td>
+                  <td className="text-end">${order.shippingCost.toFixed(2)}</td>
                 </tr>
                 <tr>
-                  <td colSpan="3" className="text-end fw-bold">Tax (20%):</td>
-                  <td className="text-end">${(order.total * 0.15).toFixed(2)}</td>
+                  <td colSpan="3" className="text-end fw-bold">Tax:</td>
+                  <td className="text-end">${order.taxAmount.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td colSpan="3" className="text-end fw-bold">Total:</td>
-                  <td className="text-end fw-bold">${order.total.toFixed(2)}</td>
+                  <td className="text-end fw-bold">${order.totalAmount.toFixed(2)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -297,6 +323,16 @@ const OrderDetail = () => {
             <FaArrowLeft className="me-1" /> Back to Orders
           </Button>
           <div>
+            {order.status?.toUpperCase() === 'PENDING' && (
+              <Button 
+                variant="outline-danger" 
+                className="me-2"
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+              >
+                <FaTimes className="me-1" /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </Button>
+            )}
             <Button variant="outline-success" className="me-2">
               Track Order
             </Button>

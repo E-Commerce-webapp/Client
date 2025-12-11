@@ -2,15 +2,43 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
 import { isTokenValid } from "../utils/auth";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Dropdown } from 'react-bootstrap';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
   const { cartCount } = useCart();
   const token = localStorage.getItem("token");
   const loggedIn = token && isTokenValid(token);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkSellerStatus = async () => {
+      if (!loggedIn) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setIsSeller(response.data.isASeller || false);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkSellerStatus();
+  }, [loggedIn, token]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -69,18 +97,35 @@ export default function Navbar() {
               </NavLink>
             </li>
 
-            {loggedIn && (
+            {loggedIn && !isLoading && (
               <li className="nav-item">
-                <NavLink
-                  to="/seller"
-                  className={({ isActive }) =>
-                    `nav-link d-flex align-items-center gap-2 
-                    ${isActive ? "active fw-bold text-info" : "text-light"}`
-                  }
-                >
-                  <i className="bi bi-shop fs-5"></i>
-                  <span className="d-none d-md-inline">Seller Hub</span>
-                </NavLink>
+                {isSeller ? (
+                  <NavLink
+                    to="/seller"
+                    className={({ isActive }) =>
+                      `nav-link d-flex align-items-center gap-2 
+                      ${isActive ? "active fw-bold text-info" : "text-light"}`
+                    }
+                  >
+                    <i className="bi bi-shop fs-5"></i>
+                    <span className="d-none d-md-inline">Seller Hub</span>
+                  </NavLink>
+                ) : (
+                  <NavLink
+                    to="/become-seller"
+                    className="nav-link d-flex align-items-center gap-2 text-light"
+                  >
+                    <i className="bi bi-shop fs-5"></i>
+                    <span className="d-none d-md-inline">Become a Seller</span>
+                  </NavLink>
+                )}
+              </li>
+            )}
+
+            {/* Notifications */}
+            {loggedIn && (
+              <li className="nav-item me-2">
+                <NotificationDropdown />
               </li>
             )}
 

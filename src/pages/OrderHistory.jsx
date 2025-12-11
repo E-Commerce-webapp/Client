@@ -150,7 +150,7 @@ const OrderHistory = () => {
             </div>
             <div className="text-muted">
               <FaCalendarAlt className="me-1" />
-              {formatDate(order.date)}
+              {formatDate(order.createdAt)}
             </div>
           </Card.Header>
           <Card.Body>
@@ -165,13 +165,13 @@ const OrderHistory = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map((item) => (
-                    <tr key={`${order.id}-${item.id}`}>
+                  {order.items.map((item, index) => (
+                    <tr key={`${order.id}-${item.productId}-${index}`}>
                       <td>
                         <div className="d-flex align-items-center">
                           <img
-                            src={item.image}
-                            alt={item.name}
+                            src={item.productImage}
+                            alt={item.productTitle}
                             style={{
                               width: "50px",
                               height: "50px",
@@ -180,12 +180,12 @@ const OrderHistory = () => {
                             }}
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = "https://via.placeholder.com/50";
+                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E";
                             }}
                           />
                           <div>
-                            <div className="fw-bold">{item.name}</div>
-                            <small className="text-muted">SKU: {item.id}</small>
+                            <div className="fw-bold">{item.productTitle}</div>
+                            <small className="text-muted">ID: {item.productId}</small>
                           </div>
                         </div>
                       </td>
@@ -203,7 +203,7 @@ const OrderHistory = () => {
                       Order Total:
                     </td>
                     <td className="text-end fw-bold">
-                      ${order.total.toFixed(2)}
+                      ${order.totalAmount.toFixed(2)}
                     </td>
                   </tr>
                 </tfoot>
@@ -214,9 +214,9 @@ const OrderHistory = () => {
               <div className="col-md-6 mb-3 mb-md-0">
                 <h6>Shipping Address</h6>
                 <address className="mb-0">
-                  {order.shippingAddress.name}
+                  {order.shippingAddress.fullName}
                   <br />
-                  {order.shippingAddress.address}
+                  {order.shippingAddress.addressLine1}
                   <br />
                   {order.shippingAddress.city},{" "}
                   {order.shippingAddress.postalCode}
@@ -228,7 +228,7 @@ const OrderHistory = () => {
                 <h6>Payment Method</h6>
                 <p className="mb-1">{order.paymentMethod}</p>
                 <p className="text-success mb-0">
-                  <FaCheckCircle className="me-1" /> {order.paymentStatus}
+                  <FaCheckCircle className="me-1" /> Paid
                 </p>
               </div>
             </div>

@@ -1,14 +1,53 @@
-import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
+import api from '../utils/api';
+import ReviewForm from '../components/ReviewForm';
+import ReviewList from '../components/ReviewList';
 
 export default function ProductDetail({ products }) {
   const { productId } = useParams();
-  const product = products.find(p => p.id === productId); 
+  const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
   const { addToCart } = useCart();
 
-  if (!products || products.length === 0) {
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  const handleReviewSubmitted = () => {
+    setReviewRefresh(prev => prev + 1);
+  };
+
+  useEffect(() => {
+    const loadProduct = async () => {
+      // 1) Try external products first
+      const fromExternal = products.find(
+        (p) => String(p.id) === String(productId)
+      );
+      if (fromExternal) {
+        setProduct(fromExternal);
+        setLoading(false);
+        return;
+      }
+
+      // 2) Fallback: fetch single internal product by id
+      try {
+        const res = await api.get(`/products/${productId}`);
+        setProduct(res.data);
+      } catch (error) {
+        console.error('Error fetching internal product by id:', error);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId, products]);
+
+  if (loading) {
     return <div className="container mt-4">Loading product...</div>;
   }
 
@@ -47,8 +86,20 @@ export default function ProductDetail({ products }) {
         </div>
         <div className="col-md-6">
           <h2>{product.title}</h2>
-          {/* External products don’t have seller info, so just hide for now */}
-          {/* <p className="text-muted">Sold by: something</p> */}
+          <p className="text-muted mb-2">
+            Store:{' '}
+            {product.storeName && product.storeId ? (
+              <span
+                className="text-primary"
+                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => navigate(`/store/${product.storeId}`)}
+              >
+                {product.storeName}
+              </span>
+            ) : (
+              <span className="text-secondary">Unknown</span>
+            )}
+          </p>
           <h4 className="my-3">${product.price.toFixed(2)}</h4>
           <p className="mb-4">{product.description}</p>
           
@@ -99,6 +150,31 @@ export default function ProductDetail({ products }) {
             </p>
           </div>
 
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="row mt-5">
+        <div className="col-12">
+          <hr className="mb-4" />
+          
+          {/* Review Form - only show if logged in */}
+          {isLoggedIn ? (
+            <ReviewForm 
+              productId={productId} 
+              onReviewSubmitted={handleReviewSubmitted} 
+            />
+          ) : (
+            <div className="alert alert-secondary mb-4">
+              <a href="/login" className="alert-link">Log in</a> to write a review.
+            </div>
+          )}
+
+          {/* Reviews List */}
+          <ReviewList 
+            productId={productId} 
+            refreshTrigger={reviewRefresh} 
+          />
         </div>
       </div>
     </div>
