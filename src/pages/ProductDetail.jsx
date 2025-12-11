@@ -2,13 +2,22 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import api from '../utils/api';
+import ReviewForm from '../components/ReviewForm';
+import ReviewList from '../components/ReviewList';
 
 export default function ProductDetail({ products }) {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
   const { addToCart } = useCart();
+
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  const handleReviewSubmitted = () => {
+    setReviewRefresh(prev => prev + 1);
+  };
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -128,6 +137,31 @@ export default function ProductDetail({ products }) {
             </p>
           </div>
 
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="row mt-5">
+        <div className="col-12">
+          <hr className="mb-4" />
+          
+          {/* Review Form - only show if logged in */}
+          {isLoggedIn ? (
+            <ReviewForm 
+              productId={productId} 
+              onReviewSubmitted={handleReviewSubmitted} 
+            />
+          ) : (
+            <div className="alert alert-secondary mb-4">
+              <a href="/login" className="alert-link">Log in</a> to write a review.
+            </div>
+          )}
+
+          {/* Reviews List */}
+          <ReviewList 
+            productId={productId} 
+            refreshTrigger={reviewRefresh} 
+          />
         </div>
       </div>
     </div>
