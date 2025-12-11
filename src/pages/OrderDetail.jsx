@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Container, Card, Button, Row, Col, Badge, Alert, Spinner } from 'react-bootstrap';
-import { FaArrowLeft, FaPrint, FaEnvelope, FaMapMarkerAlt, FaCreditCard, FaTruck, FaCheckCircle, FaHome, FaShoppingBag } from 'react-icons/fa';
-import { getOrderById } from '../services/orderService';
+import { FaArrowLeft, FaPrint, FaEnvelope, FaMapMarkerAlt, FaCreditCard, FaTruck, FaCheckCircle, FaHome, FaShoppingBag, FaTimes } from 'react-icons/fa';
+import { getOrderById, cancelOrder } from '../services/orderService';
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -10,6 +10,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -77,6 +78,28 @@ const OrderDetail = () => {
   const handleEmailInvoice = () => {
     // In a real app, this would trigger an email with the invoice
     alert('This would send an email with the order details in a real application.');
+  };
+
+  const handleCancelOrder = async () => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) {
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      await cancelOrder(orderId);
+      // Refresh order data
+      const response = await getOrderById(orderId);
+      if (response.data) {
+        setOrder(response.data);
+      }
+      alert('Order cancelled successfully.');
+    } catch (err) {
+      console.error('Error cancelling order:', err);
+      alert(err.response?.data?.error || 'Failed to cancel order. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   if (loading) {
@@ -259,7 +282,10 @@ const OrderDetail = () => {
                           }}
                         />
                         <div>
-                          <div className="fw-bold">{item.productTitle}</div>
+                          <Link to={`/products/${item.productId}`} className="fw-bold text-decoration-none text-dark">
+                            {item.productTitle}
+                          </Link>
+                          <br />
                           <small className="text-muted">ID: {item.productId}</small>
                         </div>
                       </div>
@@ -297,6 +323,16 @@ const OrderDetail = () => {
             <FaArrowLeft className="me-1" /> Back to Orders
           </Button>
           <div>
+            {order.status?.toUpperCase() === 'PENDING' && (
+              <Button 
+                variant="outline-danger" 
+                className="me-2"
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+              >
+                <FaTimes className="me-1" /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </Button>
+            )}
             <Button variant="outline-success" className="me-2">
               Track Order
             </Button>

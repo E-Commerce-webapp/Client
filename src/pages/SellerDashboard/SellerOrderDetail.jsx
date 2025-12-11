@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Container,
   Card,
@@ -102,6 +102,32 @@ const SellerOrderDetail = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const getAvailableStatuses = () => {
+    const allStatuses = [
+      { value: "PENDING", label: "Pending", order: 0 },
+      { value: "CONFIRMED", label: "Confirmed", order: 1 },
+      { value: "PROCESSING", label: "Processing", order: 2 },
+      { value: "SHIPPED", label: "Shipped", order: 3 },
+      { value: "DELIVERED", label: "Delivered", order: 4 },
+    ];
+
+    const currentStatus = order?.status?.toUpperCase();
+    const currentIndex = allStatuses.findIndex((s) => s.value === currentStatus);
+
+    // If order is delivered or cancelled, no status changes allowed
+    if (currentStatus === "DELIVERED" || currentStatus === "CANCELLED") {
+      return [{ value: currentStatus, label: currentStatus }];
+    }
+
+    // Only show statuses that come after the current one, plus CANCELLED
+    const forwardStatuses = allStatuses.filter((s) => s.order > currentIndex);
+    
+    // Add cancelled as an option (can cancel from any state except delivered)
+    forwardStatuses.push({ value: "CANCELLED", label: "Cancelled", order: 99 });
+
+    return forwardStatuses;
   };
 
   const handleStatusUpdate = async () => {
@@ -314,7 +340,10 @@ const SellerOrderDetail = () => {
                           }}
                         />
                         <div>
-                          <div className="fw-bold">{item.productTitle}</div>
+                          <Link to={`/products/${item.productId}`} className="fw-bold text-decoration-none text-dark">
+                            {item.productTitle}
+                          </Link>
+                          <br />
                           <small className="text-muted">
                             SKU: {item.productId?.slice(-8)}
                           </small>
@@ -431,13 +460,15 @@ const SellerOrderDetail = () => {
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}
             >
-              <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="SHIPPED">Shipped</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
+              {getAvailableStatuses().map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </Form.Select>
+            <Form.Text className="text-muted">
+              Status can only be moved forward, not backward.
+            </Form.Text>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>

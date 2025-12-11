@@ -75,8 +75,32 @@ const SellerOrders = () => {
 
   const handleStatusClick = (order) => {
     setSelectedOrder(order);
-    setNewStatus(order.status);
+    // Set default to first available forward status
+    const available = getAvailableStatusesForOrder(order);
+    setNewStatus(available.length > 0 ? available[0].value : order.status);
     setShowStatusModal(true);
+  };
+
+  const getAvailableStatusesForOrder = (order) => {
+    const allStatuses = [
+      { value: "PENDING", label: "Pending", order: 0 },
+      { value: "CONFIRMED", label: "Confirmed", order: 1 },
+      { value: "PROCESSING", label: "Processing", order: 2 },
+      { value: "SHIPPED", label: "Shipped", order: 3 },
+      { value: "DELIVERED", label: "Delivered", order: 4 },
+    ];
+
+    const currentStatus = order?.status?.toUpperCase();
+    const currentIndex = allStatuses.findIndex((s) => s.value === currentStatus);
+
+    if (currentStatus === "DELIVERED" || currentStatus === "CANCELLED") {
+      return [];
+    }
+
+    const forwardStatuses = allStatuses.filter((s) => s.order > currentIndex);
+    forwardStatuses.push({ value: "CANCELLED", label: "Cancelled", order: 99 });
+
+    return forwardStatuses;
   };
 
   const handleStatusUpdate = async () => {
@@ -237,14 +261,17 @@ const SellerOrders = () => {
             <Form.Select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}
+              disabled={getAvailableStatusesForOrder(selectedOrder).length === 0}
             >
-              <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="SHIPPED">Shipped</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
+              {getAvailableStatusesForOrder(selectedOrder).map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </Form.Select>
+            <Form.Text className="text-muted">
+              Status can only be moved forward, not backward.
+            </Form.Text>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
