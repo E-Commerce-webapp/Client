@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Card, Container, ProgressBar } from "react-bootstrap";
 import axios from "axios";
+import { Button } from "@/components/ui/button";
 
 const KYCForm = ({ onComplete }) => {
   const [formData, setFormData] = useState({
@@ -14,79 +14,49 @@ const KYCForm = ({ onComplete }) => {
   const [loadingUser, setLoadingUser] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  
+  const [canCreateStore, setCanCreateStore] = useState(false);
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const token = localStorage.getItem("token");
 
-  const fetchUser = async () => {
-    if (!token) {
-      setLoadingUser(false);
-      return;
-    }
-
-    try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/users`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setUser(res.data);
-    } catch (err) {
-      console.error("Error fetching user:", err);
-    } finally {
-      setLoadingUser(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) return;
+
+      try {
+        setLoadingUser(true);
+        const res = await axios.get(`${baseUrl}/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+        if (res.data?.store) {
+          setCanCreateStore(false);
+        } else if (res.data?.isASeller && res.data?.emailConfirm) {
+          setCanCreateStore(true);
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
     fetchUser();
-  }, []);
+  }, [baseUrl, token]);
 
-  useEffect(() => {
-    let interval;
-
-    if (user && !user.isASeller && !user.emailConfirm) {
-      interval = setInterval(async () => {
-        console.log("Checking verification status...");
-
-        try {
-          const res = await axios.get(
-            `${import.meta.env.VITE_API_BASE_URL}/users`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-
-          if (res.data.isASeller && res.data.emailConfirm) {
-            setUser(res.data);
-            clearInterval(interval);
-          }
-        } catch (err) {
-          console.error("Polling error:", err);
-        }
-      }, 3000);
-    }
-
-    return () => clearInterval(interval);
-  }, [user]);
-
-  const canCreateStore =
-    user?.isASeller === true && user?.emailConfirm === true;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const sendVerificationEmail = async () => {
     try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/users/become-seller`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await axios.get(`${baseUrl}/become-seller`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (res.status === 200) {
+        setSubmitted(true);
         alert(
           "Verification email sent! Please check your inbox and click the link, then come back to create your store."
         );
@@ -103,7 +73,7 @@ const KYCForm = ({ onComplete }) => {
   const createStore = async () => {
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/stores`,
+        `${baseUrl}/stores`,
         {
           name: formData.storeName,
           phoneNumber: formData.phoneNumber,
@@ -111,190 +81,168 @@ const KYCForm = ({ onComplete }) => {
           description: formData.description,
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       if (res.status === 201) {
         alert("Store created successfully!");
-        return true;
+        onComplete?.();
       }
-      alert("Failed to create store.");
-      return false;
     } catch (err) {
       console.error("Error creating store:", err);
-      alert("Error creating store.");
-      return false;
+      alert("Failed to create store. Please try again.");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) {
-      alert("You must be logged in first.");
+    if (!user) return;
+
+    if (!user.isASeller || !user.emailConfirm) {
+      await sendVerificationEmail();
+      return;
+    }
+
+    if (!formData.storeName.trim()) {
+      alert("Please enter your store name.");
       return;
     }
 
     setSubmitting(true);
-    if(canCreateStore){
-      setSubmitted(false);
-    }
-
-    try {
-      await fetchUser();
-
-      if (canCreateStore) {
-        const ok = await createStore();
-        if (ok && onComplete) onComplete();
-      } else {
-        await sendVerificationEmail();
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    await createStore();
+    setSubmitting(false);
   };
 
   return (
-    <Container className="py-5">
-      <div className="text-center mb-5">
-        <h2 className="fw-bold">Become a Seller</h2>
-        <p className="text-muted">
-          Complete the verification process to start selling on our platform.
-          This typically takes 2–3 business days to review.
-        </p>
-      </div>
+    <div className="mx-auto max-w-2xl space-y-4">
+      <h2 className="text-lg font-semibold text-foreground">
+        Store Setup (KYC)
+      </h2>
 
-      <Card className="shadow-sm mx-auto" style={{ maxWidth: "600px" }}>
-        <Card.Body className="p-4">
-          <div className="mb-4">
-            <h5 className="mb-1">Seller Verification</h5>
-            <p className="text-muted small">
-              Complete KYC verification to start selling on our platform
-            </p>
-            <ProgressBar
-              now={25}
-              label="Step 1 of 4"
-              className="mb-2"
-              style={{ height: "8px" }}
-              variant="dark"
-            />
-            <small className="text-muted">Step 1 of 4</small>
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        {loadingUser ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500 border-t-transparent" />
+            Loading your profile...
           </div>
-
-          <div className="d-flex align-items-center mb-4">
-            <div
-              className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3"
-              style={{ width: "40px", height: "40px" }}
-            >
-              <i className="bi bi-person"></i>
+        ) : !user ? (
+          <p className="text-sm text-muted-foreground">
+            You need to log in to complete store setup.
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 space-y-1 text-sm">
+              <p className="font-medium text-foreground">
+                Hello, {user.name || user.email}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Email status:{" "}
+                <span className="font-medium">
+                  {user.emailConfirm ? "Verified" : "Not verified"}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Seller status:{" "}
+                <span className="font-medium">
+                  {user.isASeller ? "Seller" : "Not a seller yet"}
+                </span>
+              </p>
             </div>
-            <div>
-              <h5 className="mb-0">Store Information</h5>
-              <small className="text-muted">Tell us about your store</small>
-            </div>
-          </div>
 
-          {loadingUser ? (
-            <p>Loading your info...</p>
-          ) : (
-            <>
-              {!canCreateStore && (
-                <div className="alert alert-info py-2">
-                  <strong>Step 1:</strong> Verify your email to become a seller.
-                  Click "Continue" to get a verification email.
-                </div>
-              )}
+            {!user.isASeller || !user.emailConfirm ? (
+              <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                <p className="font-medium">
+                  You need to verify your email before creating a store.
+                </p>
+                <p>
+                  Click &quot;Continue&quot; to send a verification email. This
+                  page will automatically reflect your status after
+                  verification.
+                </p>
+              </div>
+            ) : canCreateStore ? (
+              <div className="mb-4 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                <p className="font-medium">
+                  Email verified! You can now create your store.
+                </p>
+              </div>
+            ) : null}
 
-              {canCreateStore && (
-                <div className="alert alert-success py-2">
-                  Email verified! Fill in your store details and click "Create
-                  Store".
-                </div>
-              )}
-              {submitted && (
-                <div className="alert alert-info py-2">
-                  A verification email has been sent.
-                  <br />
-                  <strong>
-                    This page will automatically update once you verify.
-                  </strong>
-                </div>
-              )}
+            {submitted && (
+              <div className="mb-4 rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-xs text-blue-600">
+                A verification email has been sent.
+                <br />
+                <strong>This page will automatically update once you verify.</strong>
+              </div>
+            )}
 
-              <Form onSubmit={handleSubmit}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Store Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="storeName"
-                    placeholder="Enter your store name"
-                    value={formData.storeName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, storeName: e.target.value })
-                    }
-                    required
-                    className="bg-light"
-                  />
-                </Form.Group>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  Store Name
+                </label>
+                <input
+                  type="text"
+                  name="storeName"
+                  placeholder="Enter your store name"
+                  value={formData.storeName}
+                  onChange={handleChange}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  required
+                />
+              </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Phone Number</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    name="phoneNumber"
-                    placeholder="Enter your store phone number"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        phoneNumber: e.target.value,
-                      })
-                    }
-                    required
-                    className="bg-light"
-                  />
-                </Form.Group>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  placeholder="Enter your contact number"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  required
+                />
+              </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Address</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="address"
-                    placeholder="Enter your store address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    required
-                    className="bg-light"
-                  />
-                </Form.Group>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  Store Address
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  placeholder="Enter store address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  required
+                />
+              </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Description</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="description"
-                    placeholder="Enter description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        description: e.target.value,
-                      })
-                    }
-                    required
-                    className="bg-light"
-                  />
-                </Form.Group>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  placeholder="Describe your store (products, niche, etc.)"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  required
+                />
+              </div>
 
+              <div className="pt-2">
                 <Button
-                  variant="dark"
                   type="submit"
-                  className="w-100 py-2 mt-3"
-                  disabled={submitting || loadingUser}
+                  disabled={submitting}
+                  className="w-full"
                 >
                   {submitting
                     ? "Processing..."
@@ -302,12 +250,12 @@ const KYCForm = ({ onComplete }) => {
                     ? "Create Store"
                     : "Continue (Verify Email)"}
                 </Button>
-              </Form>
-            </>
-          )}
-        </Card.Body>
-      </Card>
-    </Container>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 

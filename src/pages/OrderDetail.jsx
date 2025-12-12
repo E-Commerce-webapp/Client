@@ -1,324 +1,179 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Container, Card, Button, Row, Col, Badge, Alert, Spinner } from 'react-bootstrap';
-import { FaArrowLeft, FaPrint, FaEnvelope, FaMapMarkerAlt, FaCreditCard, FaTruck, FaCheckCircle, FaHome, FaShoppingBag } from 'react-icons/fa';
-import { getOrderById } from '../services/orderService';
+import React, { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { getOrderById } from "../services/orderService";
+import { Button } from "@/components/ui/button";
+import { FaArrowLeft, FaCalendarAlt } from "react-icons/fa";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
-  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+
+  const loadOrder = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await getOrderById(orderId);
+      setOrder(response.data);
+    } catch (err) {
+      console.error("Error loading order:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to load the order. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      if (!orderId) {
-        setError('No order ID provided');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await getOrderById(orderId);
-        
-        if (response.data) {
-          setOrder(response.data);
-        } else {
-          setError('Order not found');
-        }
-      } catch (err) {
-        console.error('Error fetching order:', err);
-        setError(err.message || 'Failed to load order details. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrder();
+    loadOrder();
   }, [orderId]);
 
-  const getStatusVariant = (status) => {
-    switch (status.toLowerCase()) {
-      case 'delivered':
-        return 'success';
-      case 'shipped':
-        return 'primary';
-      case 'processing':
-        return 'warning';
-      case 'cancelled':
-        return 'danger';
-      default:
-        return 'secondary';
-    }
-  };
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
 
   const formatDate = (dateString) => {
-    try {
-      const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      };
-      return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (e) {
-      console.error('Error formatting date:', e);
-      return 'Date not available';
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleEmailInvoice = () => {
-    // In a real app, this would trigger an email with the invoice
-    alert('This would send an email with the order details in a real application.');
+    if (!dateString) return "Unknown date";
+    return new Date(dateString).toLocaleString();
   };
 
   if (loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-        <p className="mt-2">Loading order details...</p>
-      </Container>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
+      </div>
     );
   }
 
-  if (error) {
+  if (error || !order) {
     return (
-      <Container className="py-5">
-        <Alert variant="danger">
-          <Alert.Heading>Error Loading Order</Alert.Heading>
-          <p>{error}</p>
-          <div className="d-flex gap-2">
-            <Button variant="outline-danger" onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-            <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-              <FaArrowLeft className="me-1" /> Back to Orders
-            </Button>
-            <Button as={Link} to="/" variant="outline-primary">
-              <FaHome className="me-1" /> Back to Home
-            </Button>
-          </div>
-        </Alert>
-      </Container>
+      <div className="mx-auto max-w-xl px-4 py-6">
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error || "Order not found."}
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/orders" className="inline-flex items-center gap-2">
+            <FaArrowLeft className="h-4 w-4" />
+            Back to Orders
+          </Link>
+        </Button>
+      </div>
     );
   }
 
-  if (!order) {
-    return (
-      <Container className="py-5 text-center">
-        <Alert variant="warning">
-          <h4>Order Not Found</h4>
-          <p>We couldn't find an order with ID: {orderId}</p>
-          <div className="d-flex justify-content-center gap-2">
-            <Button variant="outline-warning" onClick={() => navigate('/orders')}>
-              <FaShoppingBag className="me-1" /> View All Orders
-            </Button>
-            <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-              <FaArrowLeft className="me-1" /> Go Back
-            </Button>
-            <Button as={Link} to="/" variant="outline-primary">
-              <FaHome className="me-1" /> Back to Home
-            </Button>
-          </div>
-        </Alert>
-      </Container>
-    );
-  }
+  const subtotal =
+    order.items?.reduce((sum, item) => sum + item.price * item.quantity, 0) ||
+    0;
 
   return (
-    <Container className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-          <FaArrowLeft className="me-1" /> Back to Orders
+    <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
+            Order #{order.id}
+          </h2>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <FaCalendarAlt className="h-3 w-3" />
+            {formatDate(order.date)}
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/orders" className="inline-flex items-center gap-2">
+            <FaArrowLeft className="h-4 w-4" />
+            Back to Orders
+          </Link>
         </Button>
-        <div className="d-print-none">
-          <Button variant="outline-secondary" className="me-2" onClick={handlePrint}>
-            <FaPrint className="me-1" /> Print
-          </Button>
-          <Button variant="outline-primary" onClick={handleEmailInvoice}>
-            <FaEnvelope className="me-1" /> Email Invoice
-          </Button>
+      </div>
+
+      <div className="mb-4 grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-3 text-sm">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <p className="text-base font-semibold text-foreground">
+            {order.status}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 text-sm">
+          <p className="text-xs text-muted-foreground">Items</p>
+          <p className="text-base font-semibold text-foreground">
+            {order.items?.length || 0}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 text-sm">
+          <p className="text-xs text-muted-foreground">Total Amount</p>
+          <p className="text-base font-semibold text-foreground">
+            {formatCurrency(order.totalAmount)}
+          </p>
         </div>
       </div>
 
-      <Card className="mb-4">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <div>
-            <h4 className="mb-0">Order #{order.id}</h4>
-            <small className="text-muted">Placed on {formatDate(order.date)}</small>
-          </div>
-          <Badge bg={getStatusVariant(order.status)} className="fs-6 p-2">
-            {order.status}
-          </Badge>
-        </Card.Header>
-        
-        <Card.Body>
-          {/* Order Summary */}
-          <Row className="mb-4">
-            <Col md={4} className="mb-3 mb-md-0">
-              <Card className="h-100">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaMapMarkerAlt className="me-2" />
-                  <h6 className="mb-0">Shipping Address</h6>
-                </Card.Header>
-                <Card.Body>
-                  <address className="mb-0">
-                    <strong>{order.shippingAddress.name}</strong><br />
-                    {order.shippingAddress.address}<br />
-                    {order.shippingAddress.city}, {order.shippingAddress.postalCode}<br />
-                    {order.shippingAddress.country}
-                  </address>
-                </Card.Body>
-              </Card>
-            </Col>
-            
-            <Col md={4} className="mb-3 mb-md-0">
-              <Card className="h-100">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaCreditCard className="me-2" />
-                  <h6 className="mb-0">Payment Method</h6>
-                </Card.Header>
-                <Card.Body>
-                  <div className="d-flex align-items-center">
-                    <div className="me-2">
-                      <FaCreditCard size={24} />
-                    </div>
-                    <div>
-                      <div className="fw-bold">{order.paymentMethod}</div>
-                      <div className="text-success">
-                        <FaCheckCircle className="me-1" /> {order.paymentStatus}
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-            
-            <Col md={4}>
-              <Card className="h-100">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaTruck className="me-2" />
-                  <h6 className="mb-0">Order Summary</h6>
-                </Card.Header>
-                <Card.Body>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Subtotal:</span>
-                    <span>${(order.total * 0.8).toFixed(2)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Shipping:</span>
-                    <span>${(order.total * 0.05).toFixed(2)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Tax (20%):</span>
-                    <span>${(order.total * 0.15).toFixed(2)}</span>
-                  </div>
-                  <hr />
-                  <div className="d-flex justify-content-between fw-bold">
-                    <span>Total:</span>
-                    <span>${order.total.toFixed(2)}</span>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Order Items */}
-          <h5 className="mb-3">Order Items</h5>
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: '45%' }}>Product</th>
-                  <th className="text-center">Price</th>
-                  <th className="text-center">Quantity</th>
-                  <th className="text-end">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((item, index) => (
-                  <tr key={index}>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <img 
-                          src={item.image} 
-                          alt={item.name}
-                          style={{ width: '60px', height: '60px', objectFit: 'cover', marginRight: '15px' }}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/60';
-                          }}
+      <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
+          Items in this order
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-muted/60 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium">Product</th>
+                <th className="px-4 py-2 font-medium">Price</th>
+                <th className="px-4 py-2 font-medium">Qty</th>
+                <th className="px-4 py-2 font-medium">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.items?.map((item) => (
+                <tr
+                  key={item.productId}
+                  className="border-t border-border text-xs"
+                >
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded bg-muted">
+                        <img
+                          src={item.productImage}
+                          alt={item.productTitle}
+                          className="h-full w-full object-cover"
                         />
-                        <div>
-                          <div className="fw-bold">{item.name}</div>
-                          <small className="text-muted">SKU: {item.id}</small>
-                        </div>
                       </div>
-                    </td>
-                    <td className="text-center">${item.price.toFixed(2)}</td>
-                    <td className="text-center">{item.quantity}</td>
-                    <td className="text-end">${(item.price * item.quantity).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan="3" className="text-end fw-bold">Subtotal:</td>
-                  <td className="text-end">${(order.total * 0.8).toFixed(2)}</td>
+                      <span className="font-medium text-foreground">
+                        {item.productTitle}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    {formatCurrency(item.price)}
+                  </td>
+                  <td className="px-4 py-2">{item.quantity}</td>
+                  <td className="px-4 py-2">
+                    {formatCurrency(item.price * item.quantity)}
+                  </td>
                 </tr>
-                <tr>
-                  <td colSpan="3" className="text-end fw-bold">Shipping:</td>
-                  <td className="text-end">${(order.total * 0.05).toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan="3" className="text-end fw-bold">Tax (20%):</td>
-                  <td className="text-end">${(order.total * 0.15).toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan="3" className="text-end fw-bold">Total:</td>
-                  <td className="text-end fw-bold">${order.total.toFixed(2)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </Card.Body>
-        
-        <Card.Footer className="d-flex justify-content-between d-print-none">
-          <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-            <FaArrowLeft className="me-1" /> Back to Orders
-          </Button>
-          <div>
-            <Button variant="outline-success" className="me-2">
-              Track Order
-            </Button>
-            <Button variant="primary">
-              Buy Again
-            </Button>
-          </div>
-        </Card.Footer>
-      </Card>
-      
-      <div className="d-print-none">
-        <Card>
-          <Card.Body>
-            <h5>Need Help?</h5>
-            <p className="mb-0">
-              If you have any questions about your order, please contact our 
-              <Link to="/contact" className="ms-1">customer support</Link>.
-            </p>
-          </Card.Body>
-        </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </Container>
+
+      <div className="flex flex-col items-end gap-2 text-sm">
+        <div className="flex w-full max-w-xs justify-between text-muted-foreground">
+          <span>Subtotal</span>
+          <span>{formatCurrency(subtotal)}</span>
+        </div>
+        <div className="flex w-full max-w-xs justify-between text-muted-foreground">
+          <span>Shipping</span>
+          <span>{formatCurrency(order.shippingAmount || 0)}</span>
+        </div>
+        <div className="flex w-full max-w-xs justify-between text-foreground font-semibold">
+          <span>Total</span>
+          <span>{formatCurrency(order.totalAmount)}</span>
+        </div>
+      </div>
+    </div>
   );
 };
 

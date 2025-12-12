@@ -1,85 +1,78 @@
-import React, { useState, useContext } from "react";
-import {
-  Container,
-  Form,
-  Button,
-  Row,
-  Col,
-  Card,
-  Alert,
-  Spinner,
-} from "react-bootstrap";
+import React, { useState } from "react";
+import { useCart } from "../contexts/CartContext";
 import { useNavigate } from "react-router-dom";
-import { CartContext } from "../contexts/CartContext";
-import { createOrder } from "../services/orderService";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { isTokenValid } from "../utils/auth";
 
 const Checkout = () => {
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart, cartTotal, clearCart } = useCart();
+  const navigate = useNavigate();
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
     address: "",
     city: "",
-    country: "",
     zipCode: "",
-    paymentMethod: "credit-card",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvc: "",
+    country: "",
+    email: "",
   });
+
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+
+  if (!cart.length) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
+        <p className="mb-2 text-lg font-semibold text-foreground">
+          Your cart is empty
+        </p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Add some items to your cart before checking out.
+        </p>
+        <Button onClick={() => navigate("/")}>Go to Home</Button>
+      </div>
+    );
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const calculateTotal = () => {
-    return cart
-      .reduce((total, item) => total + item.price * item.quantity, 0)
-      .toFixed(2);
-  };
-
-  const handleSubmit = async (e) => {
+  const placeOrder = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    // Basic form validation
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "email",
-      "address",
-      "city",
-      "country",
-      "zipCode",
-    ];
-    const missingFields = requiredFields.filter(
-      (field) => !formData[field].trim()
-    );
+    const token = localStorage.getItem("token");
+    if (!token || !isTokenValid(token)) {
+      setError("Your session has expired. Please log in again.");
+      localStorage.removeItem("token");
+      navigate("/login");
+      return;
+    }
 
-    if (missingFields.length > 0) {
-      setError(
-        `Please fill in all required fields: ${missingFields.join(", ")}`
-      );
-      setLoading(false);
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.address ||
+      !formData.city ||
+      !formData.zipCode ||
+      !formData.country ||
+      !formData.email
+    ) {
+      setError("Please fill in all required fields.");
       return;
     }
 
     try {
-      // Calculate order total
-      const shippingCost = 10.0; // Fixed shipping cost for now
-      const taxAmount = 0.0; // Tax calculation can be added later
+      setLoading(true);
 
-      // Prepare order data to match backend API
+      const shippingCost = 10.0;
+      const taxAmount = 0.0;
+
       const orderData = {
         items: cart.map((item) => ({
           productId: item.id,
@@ -88,7 +81,7 @@ const Checkout = () => {
             item.image || item.images?.[0] || "/images/placeholder.jpg",
           quantity: item.quantity,
           price: parseFloat(item.price),
-          sellerId: item.sellerId || "default-seller", // This should come from the product
+          sellerId: item.seller_id || "default-seller",
         })),
         shippingAddress: {
           fullName: `${formData.firstName} ${formData.lastName}`,
@@ -97,335 +90,231 @@ const Checkout = () => {
           city: formData.city,
           postalCode: formData.zipCode,
           country: formData.country,
-          phoneNumber: formData.email, // Should add phone field to form
+          phoneNumber: formData.email,
         },
-        paymentMethod: formData.paymentMethod,
-        shippingCost: shippingCost,
+        paymentMethod: "card",
+        shippingAmount: shippingCost,
         taxAmount: taxAmount,
+        totalAmount: cartTotal + shippingCost + taxAmount,
       };
 
-      console.log("Submitting order:", orderData);
+      const res = await axios.post(`${baseUrl}/orders`, orderData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      // Create the order
-      const response = await createOrder(orderData);
-      const orderId = response.data?.id;
-
-      if (!orderId) {
-        throw new Error("Failed to create order: No order ID returned");
-      }
-
-      console.log("Order created successfully:", orderId);
-
-      // Clear cart and show success
       clearCart();
-      setSuccess(`Order #${orderId} placed successfully!`);
-
-      // Redirect to order confirmation after 2 seconds
-      setTimeout(() => {
-        navigate(`/orders/${orderId}`);
-      }, 2000);
+      navigate(`/order-confirmation/${res.data.id}`);
     } catch (err) {
       console.error("Checkout error:", err);
       setError(
-        err.message || "Failed to process your order. Please try again."
+        err.response?.data?.message ||
+          "Failed to place order. Please try again."
       );
+    } finally {
       setLoading(false);
     }
   };
 
-  if (cart.length === 0 && !success) {
-    return (
-      <Container className="py-5 text-center">
-        <h2>Your cart is empty</h2>
-        <p>Add some products to your cart before checking out.</p>
-        <Button variant="primary" onClick={() => navigate("/")}>
-          Continue Shopping
-        </Button>
-      </Container>
-    );
-  }
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
+
+  const shippingCost = 10.0;
+  const taxAmount = 0.0;
+  const totalWithExtras = cartTotal + shippingCost + taxAmount;
 
   return (
-    <Container className="py-5">
-      <h2 className="mb-4">Checkout</h2>
-
-      {success && (
-        <Alert variant="success" className="mb-4">
-          {success}
-        </Alert>
-      )}
+    <div className="mx-auto max-w-5xl px-4 py-6">
+      <h2 className="mb-1 text-xl font-semibold text-foreground">
+        Checkout
+      </h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Enter your shipping details and place your order.
+      </p>
 
       {error && (
-        <Alert variant="danger" className="mb-4">
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
-        </Alert>
+        </div>
       )}
 
-      <Row>
-        <Col md={8}>
-          <Card className="mb-4">
-            <Card.Body>
-              <h5 className="mb-4">Shipping Information</h5>
-              <Form onSubmit={handleSubmit}>
-                <Row>
-                  <Col md={6} className="mb-3">
-                    <Form.Group>
-                      <Form.Label>First Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6} className="mb-3">
-                    <Form.Group>
-                      <Form.Label>Last Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
+      <div className="grid gap-6 md:grid-cols-[2fr,1.3fr]">
+        <form
+          onSubmit={placeOrder}
+          className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm"
+        >
+          <h3 className="mb-2 text-sm font-semibold text-foreground">
+            Shipping Information
+          </h3>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">
+                First Name
+              </label>
+              <input
+                name="firstName"
+                type="text"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">
+                Last Name
+              </label>
+              <input
+                name="lastName"
+                type="text"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Address</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Address
+            </label>
+            <input
+              name="address"
+              type="text"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+              value={formData.address}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-                <Row>
-                  <Col md={6} className="mb-3">
-                    <Form.Group>
-                      <Form.Label>City</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={3} className="mb-3">
-                    <Form.Group>
-                      <Form.Label>Postal Code</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleChange}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={3} className="mb-3">
-                    <Form.Group>
-                      <Form.Label>Country</Form.Label>
-                      <Form.Control
-                        as="select"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="">Select a country</option>
-                        <option value="US">United States</option>
-                        <option value="CA">Canada</option>
-                        <option value="UK">United Kingdom</option>
-                        <option value="AU">Australia</option>
-                        <option value="DE">Germany</option>
-                        <option value="FI">Finland</option>
-                        <option value="JP">Japan</option>
-                      </Form.Control>
-                    </Form.Group>
-                  </Col>
-                </Row>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">
+                City
+              </label>
+              <input
+                name="city"
+                type="text"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.city}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">
+                ZIP / Postal Code
+              </label>
+              <input
+                name="zipCode"
+                type="text"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.zipCode}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">
+                Country
+              </label>
+              <input
+                name="country"
+                type="text"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.country}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-                <hr className="my-4" />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Email
+            </label>
+            <input
+              name="email"
+              type="email"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-                <h5 className="mb-4">Payment Method</h5>
-                <Form.Group className="mb-3">
-                  <Form.Check
-                    type="radio"
-                    id="credit-card"
-                    name="paymentMethod"
-                    value="credit-card"
-                    checked={formData.paymentMethod === "credit-card"}
-                    onChange={handleChange}
-                    label="Credit Card"
-                    className="mb-2"
-                  />
+          <div className="pt-2">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Placing order..." : "Place Order"}
+            </Button>
+          </div>
+        </form>
 
-                  {formData.paymentMethod === "credit-card" && (
-                    <div className="ms-4">
-                      <Form.Group className="mb-3">
-                        <Form.Label>Card Number</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="cardNumber"
-                          value={formData.cardNumber}
-                          onChange={handleChange}
-                          placeholder="1234 5678 9012 3456"
-                          required
-                        />
-                      </Form.Group>
-                      <Row>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Expiration Date</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="cardExpiry"
-                              value={formData.cardExpiry}
-                              onChange={handleChange}
-                              placeholder="MM/YY"
-                              required
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>CVC</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="cardCvc"
-                              value={formData.cardCvc}
-                              onChange={handleChange}
-                              placeholder="123"
-                              required
-                            />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                    </div>
-                  )}
-                </Form.Group>
-
-                <Form.Check
-                  type="radio"
-                  id="paypal"
-                  name="paymentMethod"
-                  value="paypal"
-                  checked={formData.paymentMethod === "paypal"}
-                  onChange={handleChange}
-                  label="PayPal"
-                  className="mb-3"
-                />
-
-                <Form.Check
-                  type="radio"
-                  id="bank-transfer"
-                  name="paymentMethod"
-                  value="bank-transfer"
-                  checked={formData.paymentMethod === "bank-transfer"}
-                  onChange={handleChange}
-                  label="Bank Transfer"
-                  className="mb-4"
-                />
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-100"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                        className="me-2"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    "Place Order"
-                  )}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col md={4}>
-          <Card>
-            <Card.Body>
-              <h5 className="mb-4">Order Summary</h5>
-
-              <div className="mb-3">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="d-flex justify-content-between mb-2"
-                  >
-                    <div>
-                      {item.name} × {item.quantity}
-                    </div>
-                    <div>${(item.price * item.quantity).toFixed(2)}</div>
+        <div className="space-y-3 rounded-xl border border-border bg-card p-5 text-sm shadow-sm">
+          <h3 className="mb-2 text-sm font-semibold text-foreground">
+            Order Summary
+          </h3>
+          <div className="space-y-3 border-b border-border pb-3">
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded bg-muted">
+                    <img
+                      src={item.images || item.images?.[0]}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <div className="line-clamp-1 font-medium text-foreground">
+                      {item.name}
+                    </div>
+                    <div className="text-muted-foreground">
+                      Qty: {item.quantity}
+                    </div>
+                  </div>
+                </div>
+                <div className="font-semibold text-foreground">
+                  {formatCurrency(item.price * item.quantity)}
+                </div>
               </div>
+            ))}
+          </div>
 
-              <hr />
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span>{formatCurrency(cartTotal)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Shipping</span>
+              <span>{formatCurrency(shippingCost)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Tax</span>
+              <span>{formatCurrency(taxAmount)}</span>
+            </div>
+          </div>
 
-              <div className="d-flex justify-content-between mb-2">
-                <div>Subtotal</div>
-                <div>${calculateTotal()}</div>
-              </div>
-
-              <div className="d-flex justify-content-between mb-2">
-                <div>Shipping</div>
-                <div>$0.00</div>
-              </div>
-
-              <div className="d-flex justify-content-between mb-3">
-                <div>Tax</div>
-                <div>$0.00</div>
-              </div>
-
-              <hr />
-
-              <div className="d-flex justify-content-between fw-bold mb-3">
-                <div>Total</div>
-                <div>${calculateTotal()}</div>
-              </div>
-
-              <div className="small text-muted">
-                By placing your order, you agree to our Terms of Service and
-                Privacy Policy.
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+          <div className="mt-2 flex justify-between text-sm font-semibold text-foreground">
+            <span>Total</span>
+            <span>{formatCurrency(totalWithExtras)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

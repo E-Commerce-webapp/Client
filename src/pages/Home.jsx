@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
 import ProductCard from "../components/ProductCard";
-import { Spinner } from "react-bootstrap";
+import { Button } from "@/components/ui/button";
+import CategorySelect from "./CategorySellect"
 
-export default function Home({ products, loading }) {
+export default function Home({ products = [], loading }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 15;
 
   const categories = useMemo(() => {
-    const unique = Array.from(new Set(products.map((p) => p.category)));
+    const unique = Array.from(new Set(products.map((p) => p.category))).filter(
+      Boolean
+    );
     return ["all", ...unique];
   }, [products]);
 
@@ -28,101 +31,77 @@ export default function Home({ products, loading }) {
     setCurrentPage(1);
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
+  const handlePageChange = (page) => setCurrentPage(page);
 
   if (loading) {
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ minHeight: "50vh" }}
-      >
-        <Spinner animation="border" role="status" variant="primary">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="container mt-4">
-      <h2 className="mb-4 fw-bold text-center">Products</h2>
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h2 className="mb-6 text-center text-2xl font-semibold tracking-tight text-foreground">
+        Products
+      </h2>
 
-      <div className="mb-4 d-flex justify-content-center">
-        <div className="w-50">
-          <select
-            className="form-select"
-            value={selectedCategory}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            aria-label="Category filter"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === "all"
-                  ? "All Categories"
-                  : cat.replace("-", " ").replace("&", " & ")}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Category dropdown (shadcn) */}
+      <div className="mb-6 flex justify-center">
+        <CategorySelect
+          categories={categories}
+          category={selectedCategory}
+          setCategory={handleCategoryChange}
+        />
       </div>
 
-      <div className="row">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {currentProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
+
         {currentProducts.length === 0 && (
-          <p className="text-center text-muted">No products found.</p>
+          <p className="col-span-full text-center text-sm text-muted-foreground">
+            No products found.
+          </p>
         )}
       </div>
 
       {totalPages > 1 && (
-        <div className="d-flex justify-content-center mt-4">
-          <nav>
-            <ul className="pagination">
-              <li
-                className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
-              >
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  Prev
-                </button>
-              </li>
+        <div className="mt-6 flex justify-center">
+          <nav className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-1 py-1 shadow-sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="rounded-full px-3 text-xs sm:text-sm"
+            >
+              Prev
+            </Button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <li
-                    key={page}
-                    className={`page-item ${
-                      page === currentPage ? "active" : ""
-                    }`}
-                  >
-                    <button
-                      className="page-link"
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </button>
-                  </li>
-                )
-              )}
-
-              <li
-                className={`page-item ${
-                  currentPage === totalPages ? "disabled" : ""
-                }`}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handlePageChange(page)}
+                className="rounded-full px-3 text-xs sm:text-sm"
               >
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  Next
-                </button>
-              </li>
-            </ul>
+                {page}
+              </Button>
+            ))}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="rounded-full px-3 text-xs sm:text-sm"
+            >
+              Next
+            </Button>
           </nav>
         </div>
       )}

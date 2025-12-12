@@ -1,43 +1,38 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Button, Container, Alert, Spinner } from "react-bootstrap";
 import axios from "axios";
 import { handleApiError } from "../../utils/api";
+import { Button } from "@/components/ui/button";
 
 const Login = () => {
   const [step, setStep] = useState("email");
-
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     firstName: "",
     lastName: "",
-    address: ""
+    address: "",
   });
-  
-
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleEmailStep = async (email) => {
+  const handleEmailStep = async () => {
     try {
       setError("");
       setIsLoading(true);
 
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/check-email/${email}`
-      );
+      const response = await axios.get(`${baseUrl}/auth/check-email/${formData.email}`, {
+      });
 
-      if (res.data.exists) {
+      if (response.data.exists) {
         setStep("login");
       } else {
         setStep("register");
@@ -54,13 +49,10 @@ const Login = () => {
       setError("");
       setIsLoading(true);
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
-        {
-          email: formData.email,
-          password: formData.password,
-        }
-      );
+      const response = await axios.post(`${baseUrl}/auth/login`, {
+        email: formData.email,
+        password: formData.password,
+      });
 
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
@@ -78,19 +70,16 @@ const Login = () => {
       setError("");
       setIsLoading(true);
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/register`,
-        {
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-        }
-      );
+      const response = await axios.post(`${baseUrl}/auth/register`, {
+        email: formData.email,
+        password: formData.password,
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        address: formData.address,
+      });
 
-      if (response.status == 200) {
-        setStep("login");
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        navigate("/");
       }
     } catch (err) {
       setError(handleApiError(err));
@@ -101,9 +90,8 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (step === "email") {
-      await handleEmailStep(formData.email);
+      await handleEmailStep();
     } else if (step === "login") {
       await handleLoginStep();
     } else {
@@ -117,129 +105,171 @@ const Login = () => {
     return "Create your account";
   };
 
-  console.log("Current step:", step);
-
   return (
-    <Container className="py-5" style={{ maxWidth: "500px" }}>
-      <h2 className="text-center mb-4">{renderTitle()}</h2>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-6">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-center text-xl font-semibold text-foreground">
+          {renderTitle()}
+        </h2>
 
-      {error && (
-        <Alert variant="danger" onClose={() => setError("")} dismissible>
-          {error}
-        </Alert>
-      )}
-
-      <Form onSubmit={handleSubmit}>
-        <Form.Group className="mb-3" controlId="email">
-          <Form.Label>Email address</Form.Label>
-          <Form.Control
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            placeholder="Enter email"
-            disabled={step !== "email"}
-          />
-        </Form.Group>
-
-        {step === "register" && (
-          <>
-            <Form.Group className="mb-3" controlId="firstName">
-              <Form.Label>First name</Form.Label>
-              <Form.Control
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                placeholder="Your first name"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3" controlId="lastName">
-              <Form.Label>Last name</Form.Label>
-              <Form.Control
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                placeholder="Your last name"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="address">
-              <Form.Label>Address</Form.Label>
-              <Form.Control
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Your address"
-              />
-            </Form.Group>
-          </>
-        )}
-
-        {(step === "login" || step === "register") && (
-          <Form.Group className="mb-3" controlId="password">
-            <Form.Label>
-              {step === "login" ? "Password" : "Create a password"}
-            </Form.Label>
-            <Form.Control
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder={
-                step === "login" ? "Enter your password" : "Choose a password"
-              }
-            />
-          </Form.Group>
-        )}
-
-        <div className="d-grid gap-2">
-          <Button variant="primary" type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Spinner
-                  as="span"
-                  animation="border"
-                  size="sm"
-                  role="status"
-                  aria-hidden="true"
-                  className="me-2"
-                />
-                {step === "email"
-                  ? "Checking..."
-                  : step === "login"
-                  ? "Logging in..."
-                  : "Creating account..."}
-              </>
-            ) : (
-              <>
-                {step === "email" && "Continue"}
-                {step === "login" && "Login"}
-                {step === "register" && "Create account"}
-              </>
-            )}
-          </Button>
-        </div>
-
-        {step !== "email" && (
-          <div className="text-center mt-3">
-            <Button
-              variant="link"
-              type="button"
-              onClick={() => setStep("email")}
-              disabled={isLoading}
-              className="text-decoration-none"
-            >
-              Use a different email
-            </Button>
+        {error && (
+          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div className="flex items-start justify-between gap-2">
+              <span>{error}</span>
+              <button
+                type="button"
+                className="text-xs text-destructive/80"
+                onClick={() => setError("")}
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
-      </Form>
-    </Container>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label
+              htmlFor="email"
+              className="text-sm font-medium text-foreground"
+            >
+              Email address
+            </label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              disabled={isLoading || step !== "email"}
+            />
+          </div>
+
+          {step !== "email" && (
+            <div className="space-y-1">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium text-foreground"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                name="password"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+          )}
+
+          {step === "register" && (
+            <>
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-1">
+                  <label
+                    htmlFor="firstName"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    First name
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    name="firstName"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label
+                    htmlFor="lastName"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Last name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    name="lastName"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="address"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Address
+                </label>
+                <textarea
+                  id="address"
+                  name="address"
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="pt-2">
+            <Button
+              type="submit"
+              className="flex w-full items-center justify-center"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 border-t-transparent" />
+                  {step === "email"
+                    ? "Checking..."
+                    : step === "login"
+                    ? "Logging in..."
+                    : "Creating account..."}
+                </>
+              ) : (
+                <>
+                  {step === "email" && "Continue"}
+                  {step === "login" && "Login"}
+                  {step === "register" && "Create account"}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+
+        {step !== "email" && (
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+              onClick={() => setStep("email")}
+              disabled={isLoading}
+            >
+              Use a different email
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
