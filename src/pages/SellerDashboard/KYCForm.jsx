@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
-const KYCForm = () => {
+export default function KYCForm({ onComplete }) {
   const [formData, setFormData] = useState({
     storeName: "",
     phoneNumber: "",
@@ -10,31 +11,51 @@ const KYCForm = () => {
     businessDescription: "",
   });
 
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [canCreateStore, setCanCreateStore] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const token = localStorage.getItem("token");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUser = async () => {
-      if (!token) return;
+      if (!token) {
+        setLoadingUser(false);
+        return;
+      }
 
       try {
         setLoadingUser(true);
+        setError("");
+
         const res = await axios.get(`${baseUrl}/users`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         setUser(res.data);
+
         if (res.data?.store) {
           setCanCreateStore(false);
-        } else if (res.data?.isASeller && res.data?.emailConfirm) {
+          return;
+        }
+
+        if (res.data?.isASeller && res.data?.emailConfirm) {
           setCanCreateStore(true);
+        } else {
+          setCanCreateStore(false);
         }
       } catch (err) {
         console.error("Error fetching user:", err);
+        setError(
+          err.response?.data?.message ||
+            "Failed to load your profile. Please try again."
+        );
       } finally {
         setLoadingUser(false);
       }
@@ -49,85 +70,125 @@ const KYCForm = () => {
   };
 
   const sendVerificationEmail = async () => {
-    try {
-      const res = await axios.get(`${baseUrl}/become-seller`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const res = await axios.get(`${baseUrl}/become-seller`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      if (res.status === 200) {
-        setSubmitted(true);
-        alert(
-          "Verification email sent! Please check your inbox and click the link, then come back to create your store."
-        );
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error("Error sending verification email:", err);
-      alert("Failed to send verification email.");
-      return false;
+    if (res.status === 200) {
+      setSubmitted(true);
+      setSuccess(
+        "Verification email sent! Please check your inbox and click the link."
+      );
+      return true;
     }
+    return false;
   };
 
   const createStore = async () => {
-    try {
-      const res = await axios.post(
-        `${baseUrl}/stores`,
-        {
-          name: formData.storeName,
-          phoneNumber: formData.phoneNumber,
-          address: formData.address,
-          description: formData.description,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+    const payload = {
+      name: formData.storeName,
+      phoneNumber: formData.phoneNumber,
+      address: formData.businessAddress,
+      description: formData.businessDescription,
+    };
 
-      if (res.status === 201) {
-        alert("Store created successfully!");
-        onComplete?.();
-      }
-    } catch (err) {
-      console.error("Error creating store:", err);
-      alert("Failed to create store. Please try again.");
+    const res = await axios.post(`${baseUrl}/stores`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.status === 201 || res.status === 200) {
+      setSuccess("Store created successfully!");
+      onComplete?.();
+      return true;
     }
+    return false;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     if (!user) return;
 
-    if (!user.isASeller || !user.emailConfirm) {
-      await sendVerificationEmail();
-      return;
-    }
+    try {
+      setSubmitting(true);
 
-    if (!formData.storeName.trim()) {
-      alert("Please enter your store name.");
-      return;
-    }
+      if (!user.isASeller || !user.emailConfirm) {
+        await sendVerificationEmail();
+        return;
+      }
 
-    setSubmitting(true);
-    await createStore();
-    setSubmitting(false);
+      if (!formData.storeName.trim()) {
+        setError("Please enter your store name.");
+        return;
+      }
+
+      await createStore();
+    } catch (err) {
+      console.error("KYC error:", err);
+      setError(
+        err.response?.data?.message ||
+          "Something went wrong. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  if (loadingUser) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-6">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">
+            Seller Registration
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You need to log in to register as a seller.
+          </p>
+          <Button className="mt-4" onClick={() => navigate("/login")}>
+            Log in
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
       <h2 className="text-lg font-semibold text-foreground">
         Store Setup (KYC)
       </h2>
 
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        {loadingUser ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500 border-t-transparent" />
-            Loading your profile...
+        {error && (
+          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
           </div>
-        ) : !user ? (
+        )}
+
+        {success && (
+          <div className="mb-4 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
+            {success}
+          </div>
+        )}
+
+        {!user ? (
           <p className="text-sm text-muted-foreground">
-            You need to log in to complete store setup.
+            Could not load user profile.
           </p>
         ) : (
           <>
@@ -155,24 +216,19 @@ const KYCForm = () => {
                   You need to verify your email before creating a store.
                 </p>
                 <p>
-                  Click &quot;Continue&quot; to send a verification email. This
-                  page will automatically reflect your status after
-                  verification.
+                  Click <b>Continue</b> to send a verification email. After you
+                  verify, refresh this page and you can create your store.
                 </p>
               </div>
             ) : canCreateStore ? (
               <div className="mb-4 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
-                <p className="font-medium">
-                  Email verified! You can now create your store.
-                </p>
+                Email verified! You can now create your store.
               </div>
             ) : null}
 
             {submitted && (
-              <div className="mb-4 rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-xs text-blue-600">
-                A verification email has been sent.
-                <br />
-                <strong>This page will automatically update once you verify.</strong>
+              <div className="mb-4 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+                Verification email has been sent. Please check your inbox.
               </div>
             )}
 
@@ -184,9 +240,9 @@ const KYCForm = () => {
                 <input
                   type="text"
                   name="storeName"
-                  placeholder="Enter your store name"
                   value={formData.storeName}
                   onChange={handleChange}
+                  placeholder="Enter your store name"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                   required
                 />
@@ -199,9 +255,9 @@ const KYCForm = () => {
                 <input
                   type="tel"
                   name="phoneNumber"
-                  placeholder="Enter your contact number"
                   value={formData.phoneNumber}
                   onChange={handleChange}
+                  placeholder="Enter your contact number"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                   required
                 />
@@ -209,14 +265,14 @@ const KYCForm = () => {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">
-                  Store Address
+                  Business Address
                 </label>
                 <input
                   type="text"
-                  name="address"
-                  placeholder="Enter store address"
-                  value={formData.address}
+                  name="businessAddress"
+                  value={formData.businessAddress}
                   onChange={handleChange}
+                  placeholder="Enter business address"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                   required
                 />
@@ -224,25 +280,21 @@ const KYCForm = () => {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">
-                  Description
+                  Business Description
                 </label>
                 <textarea
-                  name="description"
+                  name="businessDescription"
                   rows={3}
-                  placeholder="Describe your store (products, niche, etc.)"
-                  value={formData.description}
+                  value={formData.businessDescription}
                   onChange={handleChange}
+                  placeholder="Describe your store"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                   required
                 />
               </div>
 
               <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full"
-                >
+                <Button type="submit" disabled={submitting} className="w-full">
                   {submitting
                     ? "Processing..."
                     : canCreateStore
@@ -255,282 +307,5 @@ const KYCForm = () => {
         )}
       </div>
     </div>
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const token = localStorage.getItem("token");
-  const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-    
-    try {
-      // Prepare the request body to match the backend's expected structure
-      const requestBody = {
-        name: formData.storeName,
-        phoneNumber: formData.phoneNumber,
-        address: formData.businessAddress,
-        description: formData.businessDescription
-      };
-      console.log('Token used for KYC:', token);
-      console.log('Submitting KYC with data:', requestBody);
-      
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/users/become-seller`,
-        requestBody,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          withCredentials: true
-        }
-      );
-
-      console.log('KYC submission response:', response.data);
-      
-      setSuccess(response.data.message || "Verification email sent! Please check your inbox to complete the seller registration.");
-      setFormData({
-        storeName: "",
-        phoneNumber: "",
-        businessAddress: "",
-        businessDescription: "",
-      });
-    } catch (err) {
-      console.error("Error submitting KYC:", err);
-      
-      // Log complete error response for debugging
-      if (err.response) {
-        console.error('Response data:', err.response.data);
-        console.error('Response status:', err.response.status);
-        console.error('Response headers:', err.response.headers);
-      } else if (err.request) {
-        console.error('No response received:', err.request);
-      } else {
-        console.error('Error message:', err.message);
-      }
-      
-      // Extract error message
-      let errorMessage = "Failed to submit KYC. Please try again.";
-      if (err.response?.data) {
-        // Try to get the most specific error message
-        errorMessage = err.response.data.message || 
-                      (typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data));
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-      
-      // Log to console for debugging
-      console.error('Error details:', {
-        config: err.config,
-        request: err.request,
-        response: err.response,
-        message: err.message,
-        stack: err.stack
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    const checkSellerStatus = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/api/users`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-        
-        if (res.data.isASeller) {
-          navigate('/seller');
-        }
-      } catch (err) {
-        console.error("Error checking seller status:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSellerStatus();
-  }, [token, navigate]);
-
-  useEffect(() => {
-    const verifySeller = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
-      if (token) {
-        try {
-          const res = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/api/users/verify-seller?token=${token}`
-          );
-          
-          if (res.data.success) {
-            localStorage.setItem('isSellerVerified', 'true');
-            navigate('/seller');
-          } else {
-            setError("Verification failed. The link may have expired or is invalid.");
-          }
-        } catch (err) {
-          console.error("Verification error:", err);
-          setError("Failed to verify seller. Please try again.");
-        }
-      }
-    };
-
-    verifySeller();
-  }, [navigate]);
-
-  if (loading) {
-    return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </Container>
-    );
-  }
-
-  if (!token) {
-    return (
-      <Container className="py-5">
-        <Card className="shadow">
-          <Card.Body className="text-center p-5">
-            <h2>Seller Registration</h2>
-            <p className="lead">You need to be logged in to register as a seller.</p>
-            <Button 
-              variant="primary" 
-              onClick={() => navigate('/login', { state: { from: '/become-seller' } })}
-            >
-              Log In / Register
-            </Button>
-          </Card.Body>
-        </Card>
-      </Container>
-    );
-  }
-
-  return (
-    <Container className="py-5">
-      <Card className="shadow">
-        <Card.Header className="bg-primary text-white">
-          <h2 className="mb-0">Become a Seller</h2>
-        </Card.Header>
-        <Card.Body className="p-4">
-          <h4 className="mb-4">Seller Application</h4>
-          <p className="text-muted mb-4">
-            Complete the form below to register as a seller. After submission, you'll receive a verification email to confirm your seller account.
-          </p>
-          
-          {error && <Alert variant="danger">{error}</Alert>}
-          {success && <Alert variant="success">{success}</Alert>}
-          
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Store/Business Name *</Form.Label>
-              <Form.Control
-                type="text"
-                name="storeName"
-                value={formData.storeName}
-                onChange={handleChange}
-                required
-                placeholder="Enter your store or business name"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Phone Number *</Form.Label>
-              <Form.Control
-                type="tel"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                required
-                placeholder="Enter your business phone number"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Business Address *</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="businessAddress"
-                value={formData.businessAddress}
-                onChange={handleChange}
-                required
-                placeholder="Enter your business address"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-4">
-              <Form.Label>Business Description *</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                name="businessDescription"
-                value={formData.businessDescription}
-                onChange={handleChange}
-                required
-                placeholder="Tell us about your business and what you plan to sell"
-              />
-              <Form.Text className="text-muted">
-                Minimum 50 characters. Be descriptive about your products and business.
-              </Form.Text>
-            </Form.Group>
-
-            <div className="d-grid gap-2">
-              <Button 
-                variant="primary" 
-                type="submit" 
-                disabled={submitting}
-                size="lg"
-                className="mt-3"
-              >
-                {submitting ? (
-                  <>
-                    <Spinner as="span" size="sm" animation="border" role="status" aria-hidden="true" className="me-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Application'
-                )}
-              </Button>
-            </div>
-          </Form>
-          
-          <div className="mt-4 pt-3 border-top">
-            <h5>What happens next?</h5>
-            <ol className="ps-3">
-              <li>Submit your application</li>
-              <li>Check your email for a verification link</li>
-              <li>Click the link to verify your seller account</li>
-              <li>Start listing your products!</li>
-            </ol>
-          </div>
-        </Card.Body>
-      </Card>
-    </Container>
   );
-};
-
-export default KYCForm;
+}

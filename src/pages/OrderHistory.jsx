@@ -1,16 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  FaBoxOpen,
-  FaSearch,
-  FaCalendarAlt,
-  FaCheckCircle,
-  FaHome,
-} from "react-icons/fa";
+import { FaBoxOpen, FaSearch, FaCalendarAlt, FaCheckCircle, FaHome } from "react-icons/fa";
 import { getOrders } from "../services/orderService";
 import { Button } from "@/components/ui/button";
 
-const OrderHistory = () => {
+export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [filteredStatus, setFilteredStatus] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -38,10 +32,7 @@ const OrderHistory = () => {
   }, []);
 
   const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount || 0);
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown date";
@@ -52,13 +43,15 @@ const OrderHistory = () => {
     });
   };
 
-  const filteredOrders =
-    filteredStatus === "all"
-      ? orders
-      : orders.filter((order) => order.status === filteredStatus);
+  const normalizedStatus = (s) => String(s || "").toLowerCase();
+
+  const filteredOrders = useMemo(() => {
+    if (filteredStatus === "all") return orders;
+    return orders.filter((o) => normalizedStatus(o.status) === normalizedStatus(filteredStatus));
+  }, [orders, filteredStatus]);
 
   const statusBadgeClasses = (status) => {
-    switch (status?.toLowerCase()) {
+    switch (normalizedStatus(status)) {
       case "delivered":
         return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "processing":
@@ -91,7 +84,7 @@ const OrderHistory = () => {
               variant="outline"
               size="sm"
               onClick={loadOrders}
-              className="text-destructive border-destructive/40 hover:bg-destructive/10"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
             >
               Try Again
             </Button>
@@ -111,9 +104,7 @@ const OrderHistory = () => {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
         <FaBoxOpen className="mb-3 text-5xl text-muted-foreground" />
-        <h2 className="mb-1 text-xl font-semibold text-foreground">
-          You have no orders yet
-        </h2>
+        <h2 className="mb-1 text-xl font-semibold text-foreground">You have no orders yet</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           When you place orders, they&apos;ll show up here.
         </p>
@@ -124,36 +115,37 @@ const OrderHistory = () => {
     );
   }
 
-  const statuses = ["all", "Processing", "Delivered", "Cancelled"];
+  const statuses = ["all", "processing", "delivered", "cancelled"];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Your Orders</h2>
-          <p className="text-sm text-muted-foreground">
-            View and manage your recent orders.
-          </p>
+          <p className="text-sm text-muted-foreground">View and manage your recent orders.</p>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {statuses.map((status) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() =>
-                setFilteredStatus(status === "all" ? "all" : status)
-              }
-              className={[
-                "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
-                filteredStatus === status ||
-                (status === "all" && filteredStatus === "all")
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted",
-              ].join(" ")}
-            >
-              {status === "all" ? "All" : status}
-            </button>
-          ))}
+          {statuses.map((status) => {
+            const active = filteredStatus === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setFilteredStatus(status)}
+                className={[
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                ].join(" ")}
+              >
+                {status === "all"
+                  ? "All"
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -166,26 +158,28 @@ const OrderHistory = () => {
             <div className="flex flex-col justify-between gap-3 border-b border-border px-4 py-3 text-sm md:flex-row md:items-center">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground">
-                  Order{" "}
-                  <span className="font-mono text-foreground">#{order.id}</span>
+                  Order <span className="font-mono text-foreground">#{order.id}</span>
                 </span>
+
                 <span
                   className={
                     "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium " +
                     statusBadgeClasses(order.status)
                   }
                 >
-                  {order.status}
+                  {order.status || "Unknown"}
                 </span>
-                {order.status === "Delivered" && (
+
+                {normalizedStatus(order.status) === "delivered" && (
                   <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                     <FaCheckCircle className="mr-1" /> Delivered
                   </span>
                 )}
               </div>
+
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <FaCalendarAlt className="h-3 w-3" />
-                {formatDate(order.date)}
+                {formatDate(order.createdAt || order.date)}
               </div>
             </div>
 
@@ -193,8 +187,7 @@ const OrderHistory = () => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-medium text-foreground">
-                    {order.items?.length || 0}{" "}
-                    {order.items?.length === 1 ? "item" : "items"}
+                    {order.items?.length || 0} {order.items?.length === 1 ? "item" : "items"}
                   </span>{" "}
                   in this order
                 </div>
@@ -208,9 +201,9 @@ const OrderHistory = () => {
             </div>
 
             <div className="divide-y divide-border">
-              {order.items?.map((item) => (
+              {order.items?.map((item, idx) => (
                 <div
-                  key={item.productId}
+                  key={item.productId ?? `${order.id}-${idx}`}
                   className="flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -219,8 +212,12 @@ const OrderHistory = () => {
                         src={item.productImage}
                         alt={item.productTitle}
                         className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = "/images/placeholder.jpg";
+                        }}
                       />
                     </div>
+
                     <div className="min-w-0">
                       <div className="truncate font-medium text-foreground">
                         {item.productTitle}
@@ -230,127 +227,47 @@ const OrderHistory = () => {
                       </div>
                     </div>
                   </div>
+
                   <div className="flex shrink-0 flex-col items-end gap-1 text-right text-xs">
                     <div className="font-semibold text-foreground">
-                      {formatCurrency(item.price * item.quantity)}
+                      {formatCurrency((item.price || 0) * (item.quantity || 0))}
                     </div>
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
                       <FaBoxOpen className="mr-1 h-3 w-3" />
-                      {order.status}
+                      {order.status || "—"}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
 
+            {/* Actions */}
             <div className="flex flex-col justify-between gap-2 border-t border-border bg-card px-4 py-3 text-xs sm:flex-row sm:items-center">
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link
-                    to={`/orders/${order.id}`}
-                    className="inline-flex items-center gap-2"
-                  >
+                  <Link to={`/orders/${order.id}`} className="inline-flex items-center gap-2">
                     <FaSearch className="h-3 w-3" />
                     View Details
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm">
+
+                <Button variant="outline" size="sm" disabled>
                   Track Order
                 </Button>
               </div>
+
               <div className="flex flex-wrap gap-2 sm:justify-end">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled>
                   Buy Again
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   className="text-destructive hover:bg-destructive/10"
+                  disabled
                 >
                   Return Items
                 </Button>
-            <div className="text-muted">
-              <FaCalendarAlt className="me-1" />
-              {formatDate(order.createdAt)}
-            </div>
-          </Card.Header>
-          <Card.Body>
-            <div className="table-responsive">
-              <Table hover className="mb-0">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th className="text-end">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items.map((item, index) => (
-                    <tr key={`${order.id}-${item.productId}-${index}`}>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <img
-                            src={item.productImage}
-                            alt={item.productTitle}
-                            style={{
-                              width: "50px",
-                              height: "50px",
-                              objectFit: "cover",
-                              marginRight: "15px",
-                            }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E";
-                            }}
-                          />
-                          <div>
-                            <div className="fw-bold">{item.productTitle}</div>
-                            <small className="text-muted">ID: {item.productId}</small>
-                          </div>
-                        </div>
-                      </td>
-                      <td>${item.price.toFixed(2)}</td>
-                      <td>{item.quantity}</td>
-                      <td className="text-end">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan="3" className="text-end fw-bold">
-                      Order Total:
-                    </td>
-                    <td className="text-end fw-bold">
-                      ${order.totalAmount.toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </Table>
-            </div>
-
-            <div className="row mt-4">
-              <div className="col-md-6 mb-3 mb-md-0">
-                <h6>Shipping Address</h6>
-                <address className="mb-0">
-                  {order.shippingAddress.fullName}
-                  <br />
-                  {order.shippingAddress.addressLine1}
-                  <br />
-                  {order.shippingAddress.city},{" "}
-                  {order.shippingAddress.postalCode}
-                  <br />
-                  {order.shippingAddress.country}
-                </address>
-              </div>
-              <div className="col-md-6">
-                <h6>Payment Method</h6>
-                <p className="mb-1">{order.paymentMethod}</p>
-                <p className="text-success mb-0">
-                  <FaCheckCircle className="me-1" /> Paid
-                </p>
               </div>
             </div>
           </div>
@@ -358,6 +275,4 @@ const OrderHistory = () => {
       </div>
     </div>
   );
-};
-
-export default OrderHistory;
+}

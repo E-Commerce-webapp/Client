@@ -123,21 +123,12 @@ export const CartProvider = ({ children }) => {
     </CartContext.Provider>
   );
 };
-export const useCart = () => {
+const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-};
-
-// Custom hook to use the cart context
-const useCart = () => {
-  const context = React.useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-};
+}
 
 export { CartContext, useCart };
