@@ -56,11 +56,14 @@ export const CartProvider = ({ children }) => {
         ...prevCart,
         {
           id: product.id,
+          title: product.title || product.name || "Unnamed Product",
           name: product.title || product.name || "Unnamed Product",
           price: Number(product.price) || 0,
+          image: product.images?.[0] || "",
           images: product.images?.[0] || "",
           quantity: Math.max(1, quantity || 1),
-          seller_id: product.seller_id || null,
+          sellerId: product.sellerId || product.seller_id || null,
+          storeId: product.storeId || null,
         },
       ];
     });
@@ -128,4 +131,13 @@ export const useCart = () => {
   return context;
 };
 
-export { CartContext };
+// Custom hook to use the cart context
+const useCart = () => {
+  const context = React.useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+};
+
+export { CartContext, useCart };

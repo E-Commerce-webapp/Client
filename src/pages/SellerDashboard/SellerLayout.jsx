@@ -32,6 +32,38 @@ const SellerLayout = ({ children }) => {
             </NavLink>
           </nav>
         </aside>
+    <Container fluid className="py-4">
+      <Row>
+        {/* Sidebar */}
+        <Col md={3} lg={2} className="d-none d-md-block">
+          <div className="sticky-top" style={{ top: "80px" }}>
+            <h5 className="mb-4 px-3">STORE</h5>
+            <Nav className="flex-column">
+              <Nav.Link as={NavLink} to="/profile" className="text-dark mb-2">
+                Profile
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/orders" className="text-dark mb-2">
+                My Orders
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/seller/store" className="text-dark mb-2">
+                Store
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/seller/orders" className="text-dark mb-2">
+                Customer Orders
+              </Nav.Link>
+              <Nav.Link
+                as={NavLink}
+                to="/seller"
+                className="bg-light fw-bold text-dark rounded mb-2"
+              >
+                Seller Hub
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/settings" className="text-dark mb-2">
+                Account Settings
+              </Nav.Link>
+            </Nav>
+          </div>
+        </Col>
 
         <main className="rounded-xl border border-border bg-card p-4 shadow-sm">
           {children}

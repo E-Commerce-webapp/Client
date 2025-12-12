@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { isTokenValid } from "../utils/auth";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { Alert, Button, Container, Form, Spinner } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { isTokenValid } from "../utils/auth";
+import api from "../utils/api";
 
 const SellProduct = () => {
   const [formData, setFormData] = useState({
@@ -12,12 +17,15 @@ const SellProduct = () => {
     category: "",
     stock: 1,
     image: null,
+    imageBase64: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
+  const [storeId, setStoreId] = useState("");
+  const [isStoreLoading, setIsStoreLoading] = useState(true);
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -43,6 +51,41 @@ const SellProduct = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  useEffect(() => {
+    const initStore = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        setError("Your session has expired. Please log in again.");
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
+      try {
+        setIsStoreLoading(true);
+        // Fetch current user to get their backend id
+        const userRes = await api.get("/users");
+        const user = userRes.data;
+        if (!user || !user.id) {
+          throw new Error("User information is missing.");
+        }
+
+        const response = await api.get(`/stores/user/${user.id}`);
+        setStoreId(response.data.id);
+      } catch (err) {
+        console.error("Error fetching store:", err);
+        setError(
+          err.response?.data?.message ||
+            "Unable to load your store information. Please make sure you have an active store."
+        );
+      } finally {
+        setIsStoreLoading(false);
+      }
+    };
+
+    initStore();
+  }, [navigate]);
+
   const validateForm = () => {
     if (!formData.name.trim()) {
       setError("Product name is required.");
@@ -64,7 +107,54 @@ const SellProduct = () => {
       setError("Stock quantity must be at least 1.");
       return false;
     }
+    if (!storeId) {
+      setError("Could not determine your store. Please ensure you have an active store.");
+      return false;
+    }
     return true;
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file (JPEG, PNG, etc.)");
+      return;
+    }
+
+    // Check file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size should be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setFormData((prev) => ({
+        ...prev,
+        image: file,
+        imageBase64: typeof base64String === "string" ? base64String : "",
+      }));
+      setError("");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
+
+    // Convert numeric fields to numbers
+    const processedValue =
+      type === "number" ? (value === "" ? "" : parseFloat(value)) : value;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: processedValue,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -84,23 +174,39 @@ const SellProduct = () => {
 
     try {
       setIsLoading(true);
+      const payload = {
+        title: formData.name,
+        description: formData.description,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        stock: Number(formData.stock),
+        images: formData.imageBase64,
+        storeId: storeId,
+      };
 
-      const formDataToSend = new FormData();
-      formDataToSend.append("name", formData.name);
-      formDataToSend.append("description", formData.description);
-      formDataToSend.append("price", formData.price.toString());
-      formDataToSend.append("category", formData.category);
-      formDataToSend.append("stock", formData.stock.toString());
-
-      if (formData.image) {
-        formDataToSend.append("image", formData.image);
-      }
+      const response = await api.post("/products", payload);
 
       await axios.post(`${baseUrl}/products`, formDataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
+      console.log("Product created:", response.data);
+      setSuccess("Product listed successfully!");
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        stock: 1,
+        image: null,
+        imageBase64: "",
+      });
+    } catch (err) {
+      console.error("Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
       });
 
       setSuccess("Product listed successfully!");
@@ -264,6 +370,9 @@ const SellProduct = () => {
               className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80"
               onChange={handleChange}
               disabled={isLoading}
+              onChange={handleImageChange}
+              required
+              disabled={isLoading || isStoreLoading}
             />
             <p className="text-xs text-muted-foreground">
               Optional, but recommended. Upload a clear photo of your product.
@@ -275,6 +384,8 @@ const SellProduct = () => {
               type="submit"
               disabled={isLoading}
               className="flex w-full items-center justify-center gap-2"
+              size="lg"
+              disabled={isLoading || isStoreLoading}
             >
               {isLoading ? (
                 <>
@@ -282,7 +393,7 @@ const SellProduct = () => {
                   Listing...
                 </>
               ) : (
-                "List Product for Sale"
+                isStoreLoading ? "Loading your store..." : "List Product for Sale"
               )}
             </Button>
           </div>

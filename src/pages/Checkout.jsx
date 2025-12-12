@@ -36,6 +36,58 @@ const Checkout = () => {
       </div>
     );
   }
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveShipping, setSaveShipping] = useState(true);
+  const [savePayment, setSavePayment] = useState(true);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [userSavedInfo, setUserSavedInfo] = useState({ hasShipping: false, hasPayment: false });
+  const navigate = useNavigate();
+
+  // Load saved info on mount
+  useEffect(() => {
+    const loadSavedInfo = async () => {
+      try {
+        const response = await api.get('/users');
+        const user = response.data;
+        
+        // Track what the user already has saved
+        setUserSavedInfo({
+          hasShipping: !!user.savedShippingAddress,
+          hasPayment: !!user.savedPaymentMethod,
+        });
+        
+        if (user.savedShippingAddress) {
+          const nameParts = user.savedShippingAddress.fullName.split(' ');
+          setFormData(prev => ({
+            ...prev,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            address: user.savedShippingAddress.addressLine1 || '',
+            city: user.savedShippingAddress.city || '',
+            zipCode: user.savedShippingAddress.postalCode || '',
+            country: user.savedShippingAddress.country || '',
+          }));
+        }
+        
+        if (user.savedPaymentMethod) {
+          setFormData(prev => ({
+            ...prev,
+            cardNumber: `**** **** **** ${user.savedPaymentMethod.cardLastFour}`,
+            cardExpiry: user.savedPaymentMethod.cardExpiry || '',
+          }));
+        }
+        
+        if (user.email) {
+          setFormData(prev => ({ ...prev, email: user.email }));
+        }
+      } catch (err) {
+        console.log('No saved info found or not logged in');
+      }
+    };
+    
+    loadSavedInfo();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -104,6 +156,23 @@ const Checkout = () => {
 
       clearCart();
       navigate(`/order-confirmation/${res.data.id}`);
+      setSuccess(`Order #${orderId} placed successfully!`);
+      setPendingOrderId(orderId);
+      
+      // Only show save modal if user doesn't have saved info yet
+      const needsShippingSave = !userSavedInfo.hasShipping;
+      const needsPaymentSave = !userSavedInfo.hasPayment && formData.paymentMethod === 'credit-card';
+      
+      if (needsShippingSave || needsPaymentSave) {
+        setSaveShipping(needsShippingSave);
+        setSavePayment(needsPaymentSave);
+        setShowSaveModal(true);
+      } else {
+        // User already has saved info, go directly to order page
+        setTimeout(() => {
+          navigate(`/orders/${orderId}`);
+        }, 1500);
+      }
     } catch (err) {
       console.error("Checkout error:", err);
       setError(
@@ -120,6 +189,70 @@ const Checkout = () => {
       style: "currency",
       currency: "USD",
     }).format(amount || 0);
+  const handleSaveInfo = async () => {
+    setSavingInfo(true);
+    try {
+      const saveData = {};
+      
+      if (saveShipping) {
+        saveData.shippingAddress = {
+          fullName: `${formData.firstName} ${formData.lastName}`,
+          addressLine1: formData.address,
+          city: formData.city,
+          postalCode: formData.zipCode,
+          country: formData.country,
+        };
+      }
+      
+      if (savePayment && formData.paymentMethod === 'credit-card' && formData.cardNumber) {
+        // Only save last 4 digits for security
+        const cardNum = formData.cardNumber.replace(/\s/g, '');
+        const lastFour = cardNum.slice(-4);
+        saveData.paymentMethod = {
+          cardLastFour: lastFour,
+          cardExpiry: formData.cardExpiry,
+          cardType: detectCardType(cardNum),
+        };
+      }
+      
+      if (saveData.shippingAddress || saveData.paymentMethod) {
+        await api.put('/users/checkout-info', saveData);
+        console.log('Checkout info saved successfully');
+      }
+    } catch (err) {
+      console.error('Failed to save checkout info:', err);
+    } finally {
+      setSavingInfo(false);
+      setShowSaveModal(false);
+      navigate(`/orders/${pendingOrderId}`);
+    }
+  };
+
+  const handleSkipSave = () => {
+    setShowSaveModal(false);
+    navigate(`/orders/${pendingOrderId}`);
+  };
+
+  const detectCardType = (cardNumber) => {
+    const num = cardNumber.replace(/\s/g, '');
+    if (/^4/.test(num)) return 'Visa';
+    if (/^5[1-5]/.test(num)) return 'Mastercard';
+    if (/^3[47]/.test(num)) return 'Amex';
+    if (/^6(?:011|5)/.test(num)) return 'Discover';
+    return 'Card';
+  };
+
+  if (cart.length === 0 && !success) {
+    return (
+      <Container className="py-5 text-center">
+        <h2>Your cart is empty</h2>
+        <p>Add some products to your cart before checking out.</p>
+        <Button variant="primary" onClick={() => navigate("/")}>
+          Continue Shopping
+        </Button>
+      </Container>
+    );
+  }
 
   const shippingCost = 10.0;
   const taxAmount = 0.0;
@@ -315,6 +448,66 @@ const Checkout = () => {
         </div>
       </div>
     </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Save Info Modal */}
+      <Modal show={showSaveModal} onHide={handleSkipSave} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Save Your Information?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Would you like to save your information for faster checkout next time?</p>
+          
+          {!userSavedInfo.hasShipping && (
+            <Form.Check
+              type="checkbox"
+              id="save-shipping"
+              label="Save shipping address"
+              checked={saveShipping}
+              onChange={(e) => setSaveShipping(e.target.checked)}
+              className="mb-2"
+            />
+          )}
+          
+          {!userSavedInfo.hasPayment && formData.paymentMethod === 'credit-card' && (
+            <Form.Check
+              type="checkbox"
+              id="save-payment"
+              label="Save payment method (only last 4 digits)"
+              checked={savePayment}
+              onChange={(e) => setSavePayment(e.target.checked)}
+              className="mb-2"
+            />
+          )}
+          
+          <small className="text-muted">
+            Your information will be securely stored and can be used for future orders.
+          </small>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleSkipSave}>
+            No, Thanks
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSaveInfo}
+            disabled={savingInfo || (!saveShipping && !savePayment)}
+          >
+            {savingInfo ? (
+              <>
+                <Spinner size="sm" className="me-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Information'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
   );
 };
 

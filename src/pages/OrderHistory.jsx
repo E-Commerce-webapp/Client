@@ -269,6 +269,88 @@ const OrderHistory = () => {
                 >
                   Return Items
                 </Button>
+            <div className="text-muted">
+              <FaCalendarAlt className="me-1" />
+              {formatDate(order.createdAt)}
+            </div>
+          </Card.Header>
+          <Card.Body>
+            <div className="table-responsive">
+              <Table hover className="mb-0">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th className="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item, index) => (
+                    <tr key={`${order.id}-${item.productId}-${index}`}>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <img
+                            src={item.productImage}
+                            alt={item.productTitle}
+                            style={{
+                              width: "50px",
+                              height: "50px",
+                              objectFit: "cover",
+                              marginRight: "15px",
+                            }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E";
+                            }}
+                          />
+                          <div>
+                            <div className="fw-bold">{item.productTitle}</div>
+                            <small className="text-muted">ID: {item.productId}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>${item.price.toFixed(2)}</td>
+                      <td>{item.quantity}</td>
+                      <td className="text-end">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan="3" className="text-end fw-bold">
+                      Order Total:
+                    </td>
+                    <td className="text-end fw-bold">
+                      ${order.totalAmount.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </Table>
+            </div>
+
+            <div className="row mt-4">
+              <div className="col-md-6 mb-3 mb-md-0">
+                <h6>Shipping Address</h6>
+                <address className="mb-0">
+                  {order.shippingAddress.fullName}
+                  <br />
+                  {order.shippingAddress.addressLine1}
+                  <br />
+                  {order.shippingAddress.city},{" "}
+                  {order.shippingAddress.postalCode}
+                  <br />
+                  {order.shippingAddress.country}
+                </address>
+              </div>
+              <div className="col-md-6">
+                <h6>Payment Method</h6>
+                <p className="mb-1">{order.paymentMethod}</p>
+                <p className="text-success mb-0">
+                  <FaCheckCircle className="me-1" /> Paid
+                </p>
               </div>
             </div>
           </div>
