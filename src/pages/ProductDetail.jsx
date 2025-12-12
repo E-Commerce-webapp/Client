@@ -1,43 +1,46 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { useCart } from '../contexts/CartContext';
-import api from '../utils/api';
-import ReviewForm from '../components/ReviewForm';
-import ReviewList from '../components/ReviewList';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useCart } from "../contexts/CartContext";
 
-export default function ProductDetail({ products }) {
+import api from "../utils/api";
+import ReviewForm from "../components/ReviewForm";
+import ReviewList from "../components/ReviewList";
+
+export default function ProductDetail({ products = [] }) {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
-  const [reviewRefresh, setReviewRefresh] = useState(0);
   const { addToCart } = useCart();
 
-  const isLoggedIn = !!localStorage.getItem('token');
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleReviewSubmitted = () => {
-    setReviewRefresh(prev => prev + 1);
-  };
+  const [quantity, setQuantity] = useState(1);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
+
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  const handleReviewSubmitted = () => setReviewRefresh((prev) => prev + 1);
 
   useEffect(() => {
     const loadProduct = async () => {
-      // 1) Try external products first
+      setLoading(true);
+
       const fromExternal = products.find(
         (p) => String(p.id) === String(productId)
       );
+
       if (fromExternal) {
         setProduct(fromExternal);
         setLoading(false);
         return;
       }
 
-      // 2) Fallback: fetch single internal product by id
       try {
         const res = await api.get(`/products/${productId}`);
         setProduct(res.data);
-      } catch (error) {
-        console.error('Error fetching internal product by id:', error);
+      } catch (err) {
+        console.error("Error fetching product by id:", err);
         setProduct(null);
       } finally {
         setLoading(false);
@@ -47,135 +50,169 @@ export default function ProductDetail({ products }) {
     loadProduct();
   }, [productId, products]);
 
-  if (loading) {
-    return <div className="container mt-4">Loading product...</div>;
-  }
+  const maxStock = useMemo(() => {
+    const s = product?.stock ?? product?.stock_quantity ?? 0;
+    return Number.isFinite(Number(s)) ? Number(s) : 0;
+  }, [product]);
 
-  if (!product) {
-    return <div className="container mt-4">Product not found</div>;
-  }
-
-  const maxStock = product.stock;        
-  const mainImage = product.images?.[0];  
+  const mainImage = product?.images?.[0] || product?.image || "/images/placeholder.jpg";
 
   const handleAddToCart = () => {
-    if (quantity > 0 && quantity <= maxStock) {
-      addToCart(product, quantity);
-      console.log(`Added ${quantity} of ${product} to cart.`);
-      alert(`${quantity} ${quantity === 1 ? 'item' : 'items'} added to cart!`);
-    }
+    if (!product) return;
+    if (quantity < 1 || quantity > maxStock) return;
+
+    addToCart(product, quantity);
+    alert(`${quantity} ${quantity === 1 ? "item" : "items"} added to cart!`);
   };
 
   const handleQuantityChange = (e) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value >= 1 && value <= maxStock) {
-      setQuantity(value);
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value)) {
+      setQuantity(Math.max(1, Math.min(maxStock || 1, value)));
     }
   };
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground">
+        Loading product...
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground">
+        Product not found
+      </div>
+    );
+  }
+
   return (
-    <div className="container mt-4">
-      <div className="row">
-        <div className="col-md-6">
-          <img 
-            src={mainImage} 
-            alt={product.title} 
-            className="img-fluid rounded shadow"
-            style={{ maxHeight: '500px', objectFit: 'cover' }}
-          />
+    <div className="mx-auto max-w-5xl px-4 py-6">
+      <div className="flex flex-col gap-8 md:flex-row">
+        <div className="w-full md:w-1/2">
+          <div className="overflow-hidden rounded-xl border border-border bg-muted">
+            <img
+              src={mainImage}
+              alt={product.title || product.name}
+              className="h-full w-full max-h-[480px] object-cover"
+              onError={(e) => {
+                e.currentTarget.src = "/images/placeholder.jpg";
+              }}
+            />
+          </div>
         </div>
-        <div className="col-md-6">
-          <h2>{product.title}</h2>
-          <p className="text-muted mb-2">
-            Store:{' '}
+
+        <div className="w-full md:w-1/2">
+          <h2 className="mb-1 text-2xl font-semibold text-foreground">
+            {product.title || product.name}
+          </h2>
+
+          <p className="mb-3 text-sm text-muted-foreground">
+            Store:{" "}
             {product.storeName && product.storeId ? (
-              <span
-                className="text-primary"
-                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+              <button
+                type="button"
+                className="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
                 onClick={() => navigate(`/store/${product.storeId}`)}
               >
                 {product.storeName}
-              </span>
+              </button>
             ) : (
-              <span className="text-secondary">Unknown</span>
+              <span className="text-muted-foreground">Unknown</span>
             )}
           </p>
-          <h4 className="my-3">${product.price.toFixed(2)}</h4>
-          <p className="mb-4">{product.description}</p>
-          
-          <div className="mb-3">
-            <label htmlFor="quantity" className="form-label">Quantity:</label>
-            <div className="input-group mb-3" style={{ maxWidth: '150px' }}>
-              <button 
-                className="btn btn-outline-secondary" 
+
+          <h4 className="mb-3 text-xl font-semibold text-foreground">
+            ${Number(product.price || 0).toFixed(2)}
+          </h4>
+
+          <p className="mb-4 text-sm text-muted-foreground">
+            {product.description}
+          </p>
+
+          <div className="mb-4">
+            <label htmlFor="quantity" className="mb-1 block text-sm font-medium text-foreground">
+              Quantity
+            </label>
+
+            <div className="flex max-w-xs items-center gap-2">
+              <Button
                 type="button"
-                onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                 disabled={quantity <= 1}
               >
-                -
-              </button>
-              <input 
-                type="number" 
-                className="form-control text-center" 
+                −
+              </Button>
+
+              <input
+                id="quantity"
+                type="number"
+                className="h-9 w-20 rounded-md border border-input bg-background text-center text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                 value={quantity}
                 onChange={handleQuantityChange}
-                min="1"
-                max={maxStock}
+                min={1}
+                max={maxStock || 1}
               />
-              <button 
-                className="btn btn-outline-secondary" 
+
+              <Button
                 type="button"
-                onClick={() => setQuantity(prev => Math.min(maxStock, prev + 1))}
-                disabled={quantity >= maxStock}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setQuantity((prev) => Math.min(maxStock || 1, prev + 1))}
+                disabled={maxStock > 0 ? quantity >= maxStock : true}
               >
                 +
-              </button>
+              </Button>
             </div>
           </div>
 
-          <button 
-            className="btn btn-primary btn-lg w-100 mb-3"
-            onClick={handleAddToCart}
-            disabled={maxStock === 0}
-          >
-            {maxStock > 0 ? 'Add to Cart' : 'Out of Stock'}
-          </button>
-          
-          <div className="alert alert-info">
-            <p className="mb-0">
-              <i className="bi bi-check-circle me-2"></i>
-              {maxStock > 0 
-                ? `${maxStock} in stock` 
-                : 'Currently out of stock'}
-            </p>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button
+              className="w-full sm:w-auto"
+              onClick={handleAddToCart}
+              disabled={maxStock <= 0}
+            >
+              Add to Cart
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => navigate("/cart")}
+            >
+              Go to Cart
+            </Button>
           </div>
 
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+            <p className="text-muted-foreground">
+              {maxStock > 0 ? `${maxStock} in stock` : "Currently out of stock"}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Reviews Section */}
-      <div className="row mt-5">
-        <div className="col-12">
-          <hr className="mb-4" />
-          
-          {/* Review Form - only show if logged in */}
-          {isLoggedIn ? (
-            <ReviewForm 
-              productId={productId} 
-              onReviewSubmitted={handleReviewSubmitted} 
-            />
-          ) : (
-            <div className="alert alert-secondary mb-4">
-              <a href="/login" className="alert-link">Log in</a> to write a review.
-            </div>
-          )}
+      <div className="mt-10">
+        <div className="mb-4 border-t border-border pt-6" />
 
-          {/* Reviews List */}
-          <ReviewList 
-            productId={productId} 
-            refreshTrigger={reviewRefresh} 
-          />
-        </div>
+        {isLoggedIn ? (
+          <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
+        ) : (
+          <div className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
+              Log in
+            </Link>{" "}
+            to write a review.
+          </div>
+        )}
+
+        <ReviewList productId={productId} refreshTrigger={reviewRefresh} />
       </div>
     </div>
   );

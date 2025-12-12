@@ -1,6 +1,6 @@
 import React from "react";
-import { Card, Row, Col, Button, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const SellerHub = () => {
   const navigate = useNavigate();
@@ -14,299 +14,137 @@ const SellerHub = () => {
     {
       id: "#ORD-001",
       product: "Wireless Headphones",
-      date: "2023-10-25",
-      customer: "Alice Freeman",
-      total: 129.99,
-      status: "Delivered",
+      date: "2025-11-01",
+      amount: 129.99,
+      status: "Shipped",
     },
     {
       id: "#ORD-002",
-      product: "Smart Watch Series 5",
-      date: "2023-10-26",
-      customer: "Bob Smith",
-      total: 249.5,
+      product: "Bluetooth Speaker",
+      date: "2025-11-03",
+      amount: 89.99,
       status: "Processing",
     },
     {
       id: "#ORD-003",
-      product: "Laptop Stand",
-      date: "2023-10-27",
-      customer: "Charlie Brown",
-      total: 45.0,
-      status: "Shipped",
+      product: "Gaming Mouse",
+      date: "2025-11-05",
+      amount: 49.99,
+      status: "Delivered",
     },
   ];
 
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
+
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold">Seller Hub</h2>
-        <Button variant="dark" onClick={() => navigate('/sell')}>
-          <i className="bi bi-plus-lg me-2"></i>
-          Add Product
-        </Button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
+            Seller Dashboard
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Overview of your store performance.
+          </p>
+        </div>
+        <Button onClick={() => navigate("/sell")}>Add New Product</Button>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4">
-        <div className="btn-group bg-light p-1 rounded">
-          <Button variant="light" className="fw-bold shadow-sm">
-            Dashboard
-          </Button>
-          <Button variant="light" className="text-muted border-0">
-            Products
-          </Button>
-          <Button variant="light" className="text-muted border-0">
-            Orders
-          </Button>
-          <Button variant="light" className="text-muted border-0">
-            Earnings
-          </Button>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Total Earnings</span>
+            <i className="bi bi-currency-dollar" />
+          </div>
+          <div className="text-2xl font-bold text-foreground">
+            {formatCurrency(stats.earnings)}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>New Orders</span>
+            <i className="bi bi-bag" />
+          </div>
+          <div className="text-2xl font-bold text-foreground">
+            {stats.orders}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Products</span>
+            <i className="bi bi-box" />
+          </div>
+          <div className="text-2xl font-bold text-foreground">
+            {stats.products}
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <Row className="g-4 mb-4">
-        <Col md={4}>
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex justify-content-between mb-3">
-                <span className="text-muted">Total Earnings</span>
-                <i className="bi bi-currency-dollar text-muted"></i>
-              </div>
-              <h3 className="fw-bold">${stats.earnings.toFixed(2)}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex justify-content-between mb-3">
-                <span className="text-muted">New Orders</span>
-                <i className="bi bi-bag text-muted"></i>
-              </div>
-              <h3 className="fw-bold">{stats.orders}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex justify-content-between mb-3">
-                <span className="text-muted">Products</span>
-                <i className="bi bi-box text-muted"></i>
-              </div>
-              <h3 className="fw-bold">{stats.products}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">
+            Sales Overview
+          </h3>
+          <span className="text-xs text-muted-foreground">Last 3 months</span>
+        </div>
+        <div className="flex h-40 items-end justify-between gap-4">
+          {[60, 90, 120].map((h, idx) => (
+            <div key={idx} className="flex flex-1 flex-col items-center">
+              <div
+                className="w-full rounded-t-md bg-primary/70"
+                style={{ height: `${h}px` }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+          <span>Jan</span>
+          <span>Feb</span>
+          <span>Mar</span>
+        </div>
+      </div>
 
-      {/* Earnings Report Chart Placeholder */}
-      <Card className="border-0 shadow-sm mb-4">
-        <Card.Body>
-          <h5 className="card-title mb-4">Earnings Report</h5>
-          <div className="position-relative" style={{ height: "300px" }}>
-            {/* Simple SVG Line Chart */}
-            <svg
-              viewBox="0 0 800 300"
-              className="w-100 h-100"
-              preserveAspectRatio="none"
-            >
-              {/* Grid Lines */}
-              <line
-                x1="0"
-                y1="250"
-                x2="800"
-                y2="250"
-                stroke="#eee"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1="190"
-                x2="800"
-                y2="190"
-                stroke="#eee"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1="130"
-                x2="800"
-                y2="130"
-                stroke="#eee"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1="70"
-                x2="800"
-                y2="70"
-                stroke="#eee"
-                strokeWidth="1"
-              />
-
-              {/* Y Axis Labels */}
-              <text x="10" y="250" fill="#999" fontSize="12">
-                0
-              </text>
-              <text x="10" y="190" fill="#999" fontSize="12">
-                3500
-              </text>
-              <text x="10" y="130" fill="#999" fontSize="12">
-                7000
-              </text>
-              <text x="10" y="70" fill="#999" fontSize="12">
-                10500
-              </text>
-              <text x="10" y="10" fill="#999" fontSize="12">
-                14000
-              </text>
-
-              {/* The Line */}
-              <path
-                d="M50,200 C150,190 250,150 350,130 S550,140 650,80 S750,90 800,100"
-                fill="none"
-                stroke="black"
-                strokeWidth="2"
-              />
-              {/* Points */}
-              <circle
-                cx="50"
-                cy="200"
-                r="4"
-                fill="white"
-                stroke="black"
-                strokeWidth="2"
-              />
-              <circle
-                cx="350"
-                cy="130"
-                r="4"
-                fill="white"
-                stroke="black"
-                strokeWidth="2"
-              />
-              <circle
-                cx="650"
-                cy="80"
-                r="4"
-                fill="white"
-                stroke="black"
-                strokeWidth="2"
-              />
-              <circle
-                cx="800"
-                cy="100"
-                r="4"
-                fill="white"
-                stroke="black"
-                strokeWidth="2"
-              />
-
-              {/* X Axis Labels */}
-              <text
-                x="50"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                Jan
-              </text>
-              <text
-                x="200"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                Feb
-              </text>
-              <text
-                x="350"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                Mar
-              </text>
-              <text
-                x="500"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                Apr
-              </text>
-              <text
-                x="650"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                May
-              </text>
-              <text
-                x="800"
-                y="280"
-                fill="#999"
-                fontSize="12"
-                textAnchor="middle"
-              >
-                Jun
-              </text>
-            </svg>
-          </div>
-        </Card.Body>
-      </Card>
-
-      {/* Recent Orders */}
-      <Card className="border-0 shadow-sm">
-        <Card.Body>
-          <h5 className="card-title mb-3">Recent Orders</h5>
-          <Table hover responsive>
-            <thead>
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">
+            Recent Orders
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-muted text-xs uppercase text-muted-foreground">
               <tr>
-                <th>Order ID</th>
-                <th>Product</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Total</th>
-                <th>Status</th>
+                <th className="px-3 py-2 font-medium">Order ID</th>
+                <th className="px-3 py-2 font-medium">Product</th>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Amount</th>
+                <th className="px-3 py-2 font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
               {recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td>{order.id}</td>
-                  <td>{order.product}</td>
-                  <td>{order.date}</td>
-                  <td>{order.customer}</td>
-                  <td>${order.total.toFixed(2)}</td>
-                  <td>
-                    <span
-                      className={`badge bg-${
-                        order.status === "Delivered"
-                          ? "success"
-                          : order.status === "Processing"
-                          ? "warning"
-                          : "primary"
-                      }`}
-                    >
+                <tr key={order.id} className="border-t border-border">
+                  <td className="px-3 py-2 font-mono">{order.id}</td>
+                  <td className="px-3 py-2">{order.product}</td>
+                  <td className="px-3 py-2">{order.date}</td>
+                  <td className="px-3 py-2">
+                    {formatCurrency(order.amount)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {order.status}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </Table>
-        </Card.Body>
-      </Card>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

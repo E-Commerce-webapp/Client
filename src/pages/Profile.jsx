@@ -1,60 +1,72 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button, Card, Container, Spinner, Alert, Modal, Form, Row, Col } from 'react-bootstrap';
-import axios from 'axios';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
 
-const Profile = () => {
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+export default function Profile() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [shippingForm, setShippingForm] = useState({
-    fullName: '',
-    addressLine1: '',
-    city: '',
-    postalCode: '',
-    country: '',
+    fullName: "",
+    addressLine1: "",
+    city: "",
+    postalCode: "",
+    country: "",
   });
+
   const [paymentForm, setPaymentForm] = useState({
-    cardLastFour: '',
-    cardExpiry: '',
-    cardType: '',
+    cardLastFour: "",
+    cardExpiry: "",
+    cardType: "",
   });
+
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (!token) {
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
       try {
-        const response = await axios.get(`${baseUrl}/users`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        setLoading(true);
+        setError("");
+        const res = await axios.get(`${baseUrl}/users`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
-        console.log('API Response:', response.data);
-        if (response.data) {
-          setUserData({
-            ...response.data,
-            // Map any fields if needed
-          });
-        }
+
+        setUserData(res.data);
       } catch (err) {
-        console.error('Error fetching user data:', err);
-        setError('Failed to load profile data. Please try again later.');
+        console.error("Error fetching user data:", err);
+
         if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
+          localStorage.removeItem("token");
+          navigate("/login");
+          return;
         }
+
+        setError(
+          err.response?.data?.message ||
+            "Failed to load profile data. Please try again later."
+        );
       } finally {
         setLoading(false);
       }
@@ -63,67 +75,54 @@ const Profile = () => {
     fetchUserData();
   }, [token, navigate, baseUrl]);
 
+  const initials = useMemo(() => {
+    const s = userData?.name || userData?.email || "U";
+    return s.trim().charAt(0).toUpperCase();
+  }, [userData]);
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   const openShippingModal = () => {
-    if (userData?.savedShippingAddress) {
-      setShippingForm({
-        fullName: userData.savedShippingAddress.fullName || '',
-        addressLine1: userData.savedShippingAddress.addressLine1 || '',
-        city: userData.savedShippingAddress.city || '',
-        postalCode: userData.savedShippingAddress.postalCode || '',
-        country: userData.savedShippingAddress.country || '',
-      });
-    } else {
-      setShippingForm({
-        fullName: `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim(),
-        addressLine1: '',
-        city: '',
-        postalCode: '',
-        country: '',
-      });
-    }
+    const saved = userData?.savedShippingAddress;
+    setShippingForm({
+      fullName: saved?.fullName || userData?.name || "",
+      addressLine1: saved?.addressLine1 || "",
+      city: saved?.city || "",
+      postalCode: saved?.postalCode || "",
+      country: saved?.country || "",
+    });
     setShowShippingModal(true);
   };
 
   const openPaymentModal = () => {
-    if (userData?.savedPaymentMethod) {
-      setPaymentForm({
-        cardLastFour: userData.savedPaymentMethod.cardLastFour || '',
-        cardExpiry: userData.savedPaymentMethod.cardExpiry || '',
-        cardType: userData.savedPaymentMethod.cardType || '',
-      });
-    } else {
-      setPaymentForm({
-        cardLastFour: '',
-        cardExpiry: '',
-        cardType: '',
-      });
-    }
+    const saved = userData?.savedPaymentMethod;
+    setPaymentForm({
+      cardLastFour: saved?.cardLastFour || "",
+      cardExpiry: saved?.cardExpiry || "",
+      cardType: saved?.cardType || "",
+    });
     setShowPaymentModal(true);
   };
 
   const handleSaveShipping = async () => {
     setSaving(true);
+    setError("");
+
     try {
-      const response = await axios.put(
+      const res = await axios.put(
         `${baseUrl}/users/checkout-info`,
         { shippingAddress: shippingForm },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setUserData(response.data);
+
+      setUserData(res.data);
       setShowShippingModal(false);
     } catch (err) {
-      console.error('Error saving shipping address:', err);
-      setError('Failed to save shipping address.');
+      console.error("Error saving shipping address:", err);
+      setError(err.response?.data?.message || "Failed to save shipping address.");
     } finally {
       setSaving(false);
     }
@@ -131,22 +130,20 @@ const Profile = () => {
 
   const handleSavePayment = async () => {
     setSaving(true);
+    setError("");
+
     try {
-      const response = await axios.put(
+      const res = await axios.put(
         `${baseUrl}/users/checkout-info`,
         { paymentMethod: paymentForm },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setUserData(response.data);
+
+      setUserData(res.data);
       setShowPaymentModal(false);
     } catch (err) {
-      console.error('Error saving payment method:', err);
-      setError('Failed to save payment method.');
+      console.error("Error saving payment method:", err);
+      setError(err.response?.data?.message || "Failed to save payment method.");
     } finally {
       setSaving(false);
     }
@@ -154,308 +151,304 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </Container>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
+      </div>
     );
   }
 
+  if (!userData) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-6 text-center text-sm text-muted-foreground">
+        {error || "User not found."}
+      </div>
+    );
+  }
+
+  const shippingValid =
+    shippingForm.fullName &&
+    shippingForm.addressLine1 &&
+    shippingForm.city &&
+    shippingForm.postalCode &&
+    shippingForm.country;
+
+  const paymentValid = paymentForm.cardLastFour && paymentForm.cardExpiry;
+
   return (
-    <Container className="py-5">
-      <div className="mx-auto" style={{ maxWidth: '600px' }}>
-        <h2 className="mb-4">My Profile</h2>
-        
-        {error && <Alert variant="danger">{error}</Alert>}
-        
-        <Card className="shadow">
-          <Card.Body>
-            {userData ? (
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <div>
-                    <h4>{userData.firstName} {userData.lastName}</h4>
-                    <p className="text-muted mb-0">{userData.email}</p>
-                    {userData.isASeller && <span className="badge bg-success">Seller</span>}
-                    {userData.emailConfirm ? (
-                      <span className="badge bg-success ms-2">Email Verified</span>
-                    ) : (
-                      <span className="badge bg-warning text-dark ms-2">Email Not Verified</span>
-                    )}
-                  </div>
-                  <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
-                       style={{ width: '80px', height: '80px' }}>
-                    <span className="text-white display-5">
-                      {userData.firstName ? userData.firstName.charAt(0).toUpperCase() : 'U'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <h5>Account Information</h5>
-                  <hr className="my-2" />
-                  <div className="row">
-                    <div className="col-md-6">
-                      <p className="mb-1"><strong>First Name:</strong></p>
-                      <p>{userData.firstName || 'Not provided'}</p>
-                    </div>
-                    <div className="col-md-6">
-                      <p className="mb-1"><strong>Last Name:</strong></p>
-                      <p>{userData.lastName || 'Not provided'}</p>
-                    </div>
-                  </div>
-                  <div className="row mt-3">
-                    <div className="col-12">
-                      <p className="mb-1"><strong>Email:</strong></p>
-                      <p>{userData.email}</p>
-                    </div>
-                  </div>
-                  <div className="row mt-3">
-                    <div className="col-12">
-                      <p className="mb-1"><strong>Address:</strong></p>
-                      <p>{userData.address || 'Not provided'}</p>
-                    </div>
-                  </div>
-                  <div className="row mt-3">
-                    <div className="col-md-6">
-                      <p className="mb-1"><strong>Account Type:</strong></p>
-                      <p>{userData.isASeller ? 'Seller' : 'Buyer'}</p>
-                    </div>
-                    <div className="col-md-6">
-                      <p className="mb-1"><strong>Email Status:</strong></p>
-                      <p>{userData.emailConfirm ? 'Verified' : 'Not Verified'}</p>
-                    </div>
-                  </div>
-                </div>
+    <>
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <h2 className="mb-4 text-xl font-semibold text-foreground">My Profile</h2>
 
-                {/* Saved Shipping Address Section */}
-                <div className="mb-4">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0">Saved Shipping Address</h5>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm"
-                      onClick={openShippingModal}
-                    >
-                      {userData.savedShippingAddress ? 'Edit' : 'Add'}
-                    </Button>
-                  </div>
-                  <hr className="my-2" />
-                  {userData.savedShippingAddress ? (
-                    <div>
-                      <p className="mb-1"><strong>{userData.savedShippingAddress.fullName}</strong></p>
-                      <p className="mb-1">{userData.savedShippingAddress.addressLine1}</p>
-                      <p className="mb-1">
-                        {userData.savedShippingAddress.city}, {userData.savedShippingAddress.postalCode}
-                      </p>
-                      <p className="mb-0">{userData.savedShippingAddress.country}</p>
-                    </div>
-                  ) : (
-                    <p className="text-muted">No saved shipping address.</p>
-                  )}
-                </div>
+        {error && (
+          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
-                {/* Saved Payment Method Section */}
-                <div className="mb-4">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0">Saved Payment Method</h5>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm"
-                      onClick={openPaymentModal}
-                    >
-                      {userData.savedPaymentMethod ? 'Edit' : 'Add'}
-                    </Button>
-                  </div>
-                  <hr className="my-2" />
-                  {userData.savedPaymentMethod ? (
-                    <div className="d-flex align-items-center">
-                      <div className="me-3">
-                        <i className="bi bi-credit-card fs-3"></i>
-                      </div>
-                      <div>
-                        <p className="mb-1">
-                          <strong>{userData.savedPaymentMethod.cardType || 'Card'}</strong> ending in {userData.savedPaymentMethod.cardLastFour}
-                        </p>
-                        <p className="mb-0 text-muted">Expires: {userData.savedPaymentMethod.cardExpiry}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted">No saved payment method.</p>
-                  )}
-                </div>
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Signed in as</p>
+              <h3 className="text-lg font-semibold text-foreground">
+                {userData.name || "Unnamed User"}
+              </h3>
+              <p className="text-sm text-muted-foreground">{userData.email}</p>
+
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {userData.isASeller && (
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700">
+                    Seller
+                  </span>
+                )}
+                <span
+                  className={[
+                    "rounded-full px-2 py-0.5 font-medium",
+                    userData.emailConfirm
+                      ? "bg-emerald-500/10 text-emerald-700"
+                      : "bg-amber-500/10 text-amber-700",
+                  ].join(" ")}
+                >
+                  {userData.emailConfirm ? "Email Verified" : "Email Not Verified"}
+                </span>
               </div>
-            ) : (
-              <p>No user data available</p>
-            )}
-            
-            <div className="d-grid gap-2 mt-4">
-              <Button 
-                variant="outline-primary" 
-                onClick={() => navigate('/profile/edit')}
-                disabled={!userData}
-              >
-                Edit Profile
-              </Button>
-              
-              <Button 
-                variant="outline-danger" 
-                onClick={handleLogout}
-              >
-                Logout
+            </div>
+
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted text-3xl font-semibold text-primary">
+              {initials}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h5 className="mb-2 text-sm font-semibold text-foreground">
+              Account Information
+            </h5>
+            <div className="h-px w-full bg-border" />
+
+            <div className="mt-3 grid gap-4 text-sm md:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Name</p>
+                <p className="text-foreground">{userData.name || "Not provided"}</p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Email</p>
+                <p className="text-foreground">{userData.email}</p>
+              </div>
+
+              {userData.phone && (
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Phone</p>
+                  <p className="text-foreground">{userData.phone}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-2">
+              <h5 className="text-sm font-semibold text-foreground">
+                Saved Shipping Address
+              </h5>
+              <Button variant="outline" size="sm" onClick={openShippingModal}>
+                {userData.savedShippingAddress ? "Edit" : "Add"}
               </Button>
             </div>
-          </Card.Body>
-        </Card>
+
+            <div className="mt-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              {userData.savedShippingAddress ? (
+                <div className="text-foreground">
+                  <p className="font-medium">{userData.savedShippingAddress.fullName}</p>
+                  <p className="text-muted-foreground">{userData.savedShippingAddress.addressLine1}</p>
+                  <p className="text-muted-foreground">
+                    {userData.savedShippingAddress.city},{" "}
+                    {userData.savedShippingAddress.postalCode}
+                  </p>
+                  <p className="text-muted-foreground">{userData.savedShippingAddress.country}</p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No saved shipping address.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-2">
+              <h5 className="text-sm font-semibold text-foreground">
+                Saved Payment Method
+              </h5>
+              <Button variant="outline" size="sm" onClick={openPaymentModal}>
+                {userData.savedPaymentMethod ? "Edit" : "Add"}
+              </Button>
+            </div>
+
+            <div className="mt-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              {userData.savedPaymentMethod ? (
+                <div className="text-foreground">
+                  <p className="font-medium">
+                    {userData.savedPaymentMethod.cardType || "Card"} ending in{" "}
+                    {userData.savedPaymentMethod.cardLastFour}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Expires: {userData.savedPaymentMethod.cardExpiry}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No saved payment method.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="text-sm" onClick={() => navigate("/orders")}>
+              View Orders
+            </Button>
+            <Button variant="outline" className="text-sm" onClick={() => navigate("/seller")}>
+              Seller Hub
+            </Button>
+            <Button
+              variant="outline"
+              className="ml-auto text-sm text-destructive hover:bg-destructive/10"
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Shipping Address Modal */}
-      <Modal show={showShippingModal} onHide={() => setShowShippingModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {userData?.savedShippingAddress ? 'Edit Shipping Address' : 'Add Shipping Address'}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Full Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={shippingForm.fullName}
-                onChange={(e) => setShippingForm({ ...shippingForm, fullName: e.target.value })}
-                placeholder="John Doe"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Address</Form.Label>
-              <Form.Control
-                type="text"
-                value={shippingForm.addressLine1}
-                onChange={(e) => setShippingForm({ ...shippingForm, addressLine1: e.target.value })}
-                placeholder="123 Main Street"
-              />
-            </Form.Group>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>City</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={shippingForm.city}
-                    onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
-                    placeholder="New York"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Postal Code</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={shippingForm.postalCode}
-                    onChange={(e) => setShippingForm({ ...shippingForm, postalCode: e.target.value })}
-                    placeholder="10001"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Country</Form.Label>
-              <Form.Control
-                as="select"
-                value={shippingForm.country}
-                onChange={(e) => setShippingForm({ ...shippingForm, country: e.target.value })}
-              >
-                <option value="">Select a country</option>
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="UK">United Kingdom</option>
-                <option value="AU">Australia</option>
-                <option value="DE">Germany</option>
-                <option value="FI">Finland</option>
-                <option value="JP">Japan</option>
-              </Form.Control>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowShippingModal(false)}>
-            Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleSaveShipping}
-            disabled={saving || !shippingForm.fullName || !shippingForm.addressLine1 || !shippingForm.city || !shippingForm.postalCode || !shippingForm.country}
-          >
-            {saving ? <><Spinner size="sm" className="me-2" />Saving...</> : 'Save'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <Dialog open={showShippingModal} onOpenChange={setShowShippingModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {userData.savedShippingAddress ? "Edit Shipping Address" : "Add Shipping Address"}
+            </DialogTitle>
+            <DialogDescription>
+              This will be used for faster checkout next time.
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Payment Method Modal */}
-      <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {userData?.savedPaymentMethod ? 'Edit Payment Method' : 'Add Payment Method'}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Card Type</Form.Label>
-              <Form.Control
-                as="select"
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Full Name</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={shippingForm.fullName}
+                onChange={(e) => setShippingForm((p) => ({ ...p, fullName: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Address</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={shippingForm.addressLine1}
+                onChange={(e) => setShippingForm((p) => ({ ...p, addressLine1: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">City</label>
+                <input
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  value={shippingForm.city}
+                  onChange={(e) => setShippingForm((p) => ({ ...p, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Postal Code</label>
+                <input
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                  value={shippingForm.postalCode}
+                  onChange={(e) => setShippingForm((p) => ({ ...p, postalCode: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Country</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={shippingForm.country}
+                onChange={(e) => setShippingForm((p) => ({ ...p, country: e.target.value }))}
+                placeholder="Finland"
+              />
+              <p className="text-xs text-muted-foreground">
+                (You can change this to a Select later.)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2 gap-2">
+            <Button variant="outline" onClick={() => setShowShippingModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveShipping} disabled={saving || !shippingValid}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {userData.savedPaymentMethod ? "Edit Payment Method" : "Add Payment Method"}
+            </DialogTitle>
+            <DialogDescription>
+              For security, store only last 4 digits.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Card Type</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                 value={paymentForm.cardType}
-                onChange={(e) => setPaymentForm({ ...paymentForm, cardType: e.target.value })}
-              >
-                <option value="">Select card type</option>
-                <option value="Visa">Visa</option>
-                <option value="Mastercard">Mastercard</option>
-                <option value="Amex">American Express</option>
-                <option value="Discover">Discover</option>
-              </Form.Control>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Last 4 Digits</Form.Label>
-              <Form.Control
-                type="text"
-                maxLength={4}
+                onChange={(e) => setPaymentForm((p) => ({ ...p, cardType: e.target.value }))}
+                placeholder="Visa"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Last 4 Digits</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
                 value={paymentForm.cardLastFour}
-                onChange={(e) => setPaymentForm({ ...paymentForm, cardLastFour: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                onChange={(e) =>
+                  setPaymentForm((p) => ({
+                    ...p,
+                    cardLastFour: e.target.value.replace(/\D/g, "").slice(0, 4),
+                  }))
+                }
+                maxLength={4}
                 placeholder="1234"
               />
-              <Form.Text className="text-muted">
-                For security, only the last 4 digits are stored.
-              </Form.Text>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Expiry Date</Form.Label>
-              <Form.Control
-                type="text"
-                value={paymentForm.cardExpiry}
-                onChange={(e) => setPaymentForm({ ...paymentForm, cardExpiry: e.target.value })}
-                placeholder="MM/YY"
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
-            Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleSavePayment}
-            disabled={saving || !paymentForm.cardLastFour || !paymentForm.cardExpiry}
-          >
-            {saving ? <><Spinner size="sm" className="me-2" />Saving...</> : 'Save'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
-  );
-};
+            </div>
 
-export default Profile;
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Expiry (MM/YY)</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={paymentForm.cardExpiry}
+                onChange={(e) => setPaymentForm((p) => ({ ...p, cardExpiry: e.target.value }))}
+                placeholder="12/27"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2 gap-2">
+            <Button variant="outline" onClick={() => setShowPaymentModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePayment} disabled={saving || !paymentValid}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
