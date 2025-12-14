@@ -3,7 +3,6 @@ import { CartProvider } from "./contexts/CartContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import "bootstrap/dist/css/bootstrap.min.css";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/LoginPage/Login";

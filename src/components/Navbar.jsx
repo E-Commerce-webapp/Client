@@ -1,223 +1,168 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
 import { isTokenValid } from "../utils/auth";
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Dropdown } from 'react-bootstrap';
-import NotificationDropdown from './NotificationDropdown';
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
+import {
+  Home,
+  Store,
+  ShoppingCart,
+  User,
+  LogOut,
+  LogIn,
+  UserPlus,
+  Package,
+} from "lucide-react";
 
 export default function Navbar() {
   const { cartCount } = useCart();
   const token = localStorage.getItem("token");
   const loggedIn = token && isTokenValid(token);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isSeller, setIsSeller] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkSellerStatus = async () => {
-      if (!loggedIn) {
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/users`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        setIsSeller(response.data.isASeller || false);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSellerStatus();
-  }, [loggedIn, token]);
+  const userName = useMemo(() => {
+    if (!token) return "Account";
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.sub || "Account";
+    } catch {
+      return "Account";
+    }
+  }, [token]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
-  const toggleUserMenu = () => setShowUserMenu(!showUserMenu);
-  const closeUserMenu = () => setShowUserMenu(false);
-
-  const getUserName = () => {
-    if (!token) return 'Account';
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.sub || 'Account';
-    } catch (_) {
-      return 'Account';
-    }
-  };
+  const navLinkClass = ({ isActive }) =>
+    [
+      "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium",
+      "text-zinc-300 hover:text-zinc-50 hover:bg-zinc-800/70 transition-colors",
+      isActive && "bg-zinc-800 text-zinc-50",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-      <div className="container-fluid">
-        <NavLink className="navbar-brand fw-bold" to="/">
+    <nav className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900/95 backdrop-blur">
+      <div className="flex h-14 w-full items-center gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
+        <NavLink
+          to="/"
+          className="text-lg font-semibold tracking-tight text-zinc-50 hover:text-white"
+        >
           EcomSphere
         </NavLink>
 
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <div className="d-none d-lg-block me-3 flex-grow-1 mx-4">
+        <div className="hidden flex-1 justify-center md:flex">
+          <div className="w-full max-w-xl">
             <SearchBar />
           </div>
+        </div>
 
-          <ul className="navbar-nav ms-auto align-items-center">
-            <li className="nav-item">
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  `nav-link d-flex align-items-center gap-2 
-                  ${isActive ? "active fw-bold text-info" : "text-light"}`
-                }
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <NavLink to="/" end className={navLinkClass}>
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Home</span>
+          </NavLink>
+
+          {loggedIn && (
+            <NavLink to="/seller" className={navLinkClass}>
+              <Store className="h-4 w-4" />
+              <span className="hidden sm:inline">Seller Hub</span>
+            </NavLink>
+          )}
+
+          <NavLink to="/cart" className={navLinkClass}>
+            <div className="relative flex items-center gap-1">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Cart</span>
+              {cartCount > 0 && (
+                <span className="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+            </div>
+          </NavLink>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-3 text-xs sm:text-sm text-zinc-200 cursor-pointer hover:bg-zinc-800/70 hover:text-zinc-50 transition-colors"
               >
-                <i className="bi bi-house-door fs-5"></i>
-                <span className="d-none d-md-inline">Home</span>
-              </NavLink>
-            </li>
-
-            {loggedIn && !isLoading && (
-              <li className="nav-item">
-                {isSeller ? (
-                  <NavLink
-                    to="/seller"
-                    className={({ isActive }) =>
-                      `nav-link d-flex align-items-center gap-2 
-                      ${isActive ? "active fw-bold text-info" : "text-light"}`
-                    }
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">{userName}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 border-zinc-700 bg-zinc-900 text-zinc-100"
+            >
+              <DropdownMenuLabel>Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {loggedIn ? (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/profile")}
+                    className="cursor-pointer"
                   >
-                    <i className="bi bi-shop fs-5"></i>
-                    <span className="d-none d-md-inline">Seller Hub</span>
-                  </NavLink>
-                ) : (
-                  <NavLink
-                    to="/become-seller"
-                    className="nav-link d-flex align-items-center gap-2 text-light"
+                    <User className="mr-2 h-4 w-4" />
+                    <span>My Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/orders")}
+                    className="cursor-pointer"
                   >
-                    <i className="bi bi-shop fs-5"></i>
-                    <span className="d-none d-md-inline">Become a Seller</span>
-                  </NavLink>
-                )}
-              </li>
-            )}
-
-            {/* Notifications */}
-            {loggedIn && (
-              <li className="nav-item me-2">
-                <NotificationDropdown />
-              </li>
-            )}
-
-            {/* User Account Dropdown */}
-            <li className="nav-item dropdown" onMouseLeave={closeUserMenu}>
-              <div className="d-flex align-items-center">
-                <button
-                  className="nav-link d-flex align-items-center gap-2 text-light bg-transparent border-0"
-                  onClick={toggleUserMenu}
-                  aria-expanded={showUserMenu}
-                >
-                  <i className="bi bi-person-circle fs-4"></i>
-                  <span className="d-none d-md-inline">{getUserName()}</span>
-                  <i className={`bi bi-chevron-${showUserMenu ? 'up' : 'down'} ms-1`}></i>
-                </button>
-              </div>
-              
-              <div className={`dropdown-menu dropdown-menu-end ${showUserMenu ? 'show' : ''}`}>
-                {loggedIn ? (
-                  <>
-                    <NavLink 
-                      to="/profile" 
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={closeUserMenu}
-                    >
-                      <i className="bi bi-person"></i> My Profile
-                    </NavLink>
-                    <NavLink 
-                      to="/orders" 
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={closeUserMenu}
-                    >
-                      <i className="bi bi-box-seam"></i> My Orders
-                    </NavLink>
-                    <div className="dropdown-divider"></div>
-                    <button 
-                      className="dropdown-item d-flex align-items-center gap-2 text-danger"
-                      onClick={() => {
-                        closeUserMenu();
-                        handleLogout();
-                      }}
-                    >
-                      <i className="bi bi-box-arrow-right"></i> Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <NavLink 
-                      to="/login" 
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={closeUserMenu}
-                    >
-                      <i className="bi bi-box-arrow-in-right"></i> Login
-                    </NavLink>
-                    <NavLink 
-                      to="/register" 
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={closeUserMenu}
-                    >
-                      <i className="bi bi-person-plus"></i> Register
-                    </NavLink>
-                  </>
-                )}
-              </div>
-            </li>
-
-            {/* Cart Icon */}
-            <li className="nav-item">
-              <NavLink
-                to="/cart"
-                className={({ isActive }) =>
-                  `nav-link d-flex align-items-center gap-2 position-relative 
-                  ${isActive ? "active fw-bold text-info" : "text-light"}`
-                }
-              >
-                <i className="bi bi-cart3 fs-5"></i>
-                <span className="d-none d-md-inline">Cart</span>
-                {cartCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    {cartCount > 9 ? '9+' : cartCount}
-                  </span>
-                )}
-              </NavLink>
-            </li>
-          </ul>
+                    <Package className="mr-2 h-4 w-4" />
+                    <span>My Orders</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-400 focus:text-red-400"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/login")}
+                    className="cursor-pointer"
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    <span>Login</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/register")}
+                    className="cursor-pointer"
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    <span>Register</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      <div className="container-fluid d-lg-none mt-2">
-        <div className="px-2">
-          <SearchBar />
-        </div>
+      <div className="border-t border-zinc-800 px-4 pb-3 pt-2 md:hidden">
+        <SearchBar />
       </div>
     </nav>
   );
