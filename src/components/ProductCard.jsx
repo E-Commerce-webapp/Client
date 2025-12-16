@@ -12,7 +12,7 @@ export default function ProductCard({ product }) {
       onClick={handleCardClick}
       className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-transform hover:-translate-y-1 hover:border-ring hover:shadow-md"
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
         <img
           src={product.images[0]}
           alt={product.title}

@@ -19,7 +19,7 @@ export default function ReviewList({ productId, refreshTrigger }) {
       ]);
       setReviews(reviewsData);
       setAverageRating(ratingData);
-    } catch (err) {
+    } catch {
       setError('Failed to load reviews');
     } finally {
       setIsLoading(false);
@@ -39,7 +39,7 @@ export default function ReviewList({ productId, refreshTrigger }) {
     try {
       await deleteReview(reviewId);
       fetchReviews();
-    } catch (err) {
+    } catch {
       setError('Failed to delete review');
     }
   };

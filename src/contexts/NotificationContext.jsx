@@ -1,4 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   getNotifications,
   getUnreadCount,
@@ -8,14 +13,6 @@ import {
 } from "../services/notificationService";
 
 const NotificationContext = createContext();
-
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error("useNotifications must be used within a NotificationProvider");
-  }
-  return context;
-};
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
@@ -35,7 +32,9 @@ export const NotificationProvider = ({ children }) => {
       const response = await getNotifications();
       setNotifications(response.data || []);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      // Silently fail if notification service is not available
+      console.warn("Notification service not available:", error.message);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -52,7 +51,9 @@ export const NotificationProvider = ({ children }) => {
       const response = await getUnreadCount();
       setUnreadCount(response.data?.count || 0);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      // Silently fail if notification service is not available
+      console.warn("Notification service not available:", error.message);
+      setUnreadCount(0);
     }
   }, []);
 
@@ -64,7 +65,7 @@ export const NotificationProvider = ({ children }) => {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.warn("Notification service not available:", error.message);
     }
   };
 
@@ -74,7 +75,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Error marking all as read:", error);
+      console.warn("Notification service not available:", error.message);
     }
   };
 
@@ -87,7 +88,7 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error("Error deleting notification:", error);
+      console.warn("Notification service not available:", error.message);
     }
   };
 
@@ -99,7 +100,7 @@ export const NotificationProvider = ({ children }) => {
   // Fetch notifications on mount and when token changes
   useEffect(() => {
     refreshNotifications();
-    
+
     // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       fetchUnreadCount();

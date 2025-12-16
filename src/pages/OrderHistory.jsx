@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaBoxOpen, FaSearch, FaCalendarAlt, FaCheckCircle, FaHome } from "react-icons/fa";
+import {
+  FaBoxOpen,
+  FaSearch,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaHome,
+} from "react-icons/fa";
 import { getOrders } from "../services/orderService";
 import { Button } from "@/components/ui/button";
 
@@ -14,8 +20,10 @@ export default function OrderHistory() {
     try {
       setLoading(true);
       setError("");
-      const response = await getOrders();
-      setOrders(response.data || []);
+      const data = await getOrders();
+      console.log("Orders API Response:", data);
+      console.log("Orders Count:", Array.isArray(data) ? data.length : 0);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading orders:", err);
       setError(
@@ -32,7 +40,10 @@ export default function OrderHistory() {
   }, []);
 
   const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0);
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown date";
@@ -47,8 +58,18 @@ export default function OrderHistory() {
 
   const filteredOrders = useMemo(() => {
     if (filteredStatus === "all") return orders;
-    return orders.filter((o) => normalizedStatus(o.status) === normalizedStatus(filteredStatus));
+    return orders.filter(
+      (o) => normalizedStatus(o.status) === normalizedStatus(filteredStatus)
+    );
   }, [orders, filteredStatus]);
+
+  console.log("OrderHistory State:", {
+    totalOrders: orders.length,
+    filteredOrders: filteredOrders.length,
+    currentFilter: filteredStatus,
+    loading,
+    error,
+  });
 
   const statusBadgeClasses = (status) => {
     switch (normalizedStatus(status)) {
@@ -56,6 +77,8 @@ export default function OrderHistory() {
         return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "processing":
         return "bg-amber-100 text-amber-700 border-amber-200";
+      case "pending":
+        return "bg-blue-100 text-blue-700 border-blue-200";
       case "cancelled":
       case "canceled":
         return "bg-red-100 text-red-700 border-red-200";
@@ -104,7 +127,9 @@ export default function OrderHistory() {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
         <FaBoxOpen className="mb-3 text-5xl text-muted-foreground" />
-        <h2 className="mb-1 text-xl font-semibold text-foreground">You have no orders yet</h2>
+        <h2 className="mb-1 text-xl font-semibold text-foreground">
+          You have no orders yet
+        </h2>
         <p className="mb-4 text-sm text-muted-foreground">
           When you place orders, they&apos;ll show up here.
         </p>
@@ -115,14 +140,16 @@ export default function OrderHistory() {
     );
   }
 
-  const statuses = ["all", "processing", "delivered", "cancelled"];
+  const statuses = ["all", "pending", "processing", "delivered", "cancelled"];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Your Orders</h2>
-          <p className="text-sm text-muted-foreground">View and manage your recent orders.</p>
+          <p className="text-sm text-muted-foreground">
+            View and manage your recent orders.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -158,7 +185,8 @@ export default function OrderHistory() {
             <div className="flex flex-col justify-between gap-3 border-b border-border px-4 py-3 text-sm md:flex-row md:items-center">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground">
-                  Order <span className="font-mono text-foreground">#{order.id}</span>
+                  Order{" "}
+                  <span className="font-mono text-foreground">#{order.id}</span>
                 </span>
 
                 <span
@@ -187,7 +215,8 @@ export default function OrderHistory() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-medium text-foreground">
-                    {order.items?.length || 0} {order.items?.length === 1 ? "item" : "items"}
+                    {order.items?.length || 0}{" "}
+                    {order.items?.length === 1 ? "item" : "items"}
                   </span>{" "}
                   in this order
                 </div>
@@ -245,7 +274,10 @@ export default function OrderHistory() {
             <div className="flex flex-col justify-between gap-2 border-t border-border bg-card px-4 py-3 text-xs sm:flex-row sm:items-center">
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link to={`/orders/${order.id}`} className="inline-flex items-center gap-2">
+                  <Link
+                    to={`/orders/${order.id}`}
+                    className="inline-flex items-center gap-2"
+                  >
                     <FaSearch className="h-3 w-3" />
                     View Details
                   </Link>
