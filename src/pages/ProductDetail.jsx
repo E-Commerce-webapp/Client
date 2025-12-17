@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "../contexts/CartContext";
 

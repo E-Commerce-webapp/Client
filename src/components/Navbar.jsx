@@ -24,6 +24,7 @@ import {
   LogIn,
   UserPlus,
   Package,
+  MessageCircle,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -167,6 +168,13 @@ export default function Navbar() {
                   >
                     <Package className="mr-2 h-4 w-4" />
                     <span>My Orders</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/messages")}
+                    className="cursor-pointer"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    <span>Messages</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

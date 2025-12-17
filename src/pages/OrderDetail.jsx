@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FaArrowLeft, FaCalendarAlt } from "react-icons/fa";
-import { getOrderById, cancelOrder } from "../services/orderService"; 
+import { MessageCircle } from "lucide-react";
+import { getOrderById, cancelOrder } from "../services/orderService";
+import { sendMessage } from "../services/messageService"; 
 
 export default function OrderDetail() {
   const { orderId } = useParams();
+  const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,10 @@ export default function OrderDetail() {
 
   const canCancel =
     String(order?.status || "").toUpperCase() === "PENDING";
+
+  const handleContactSeller = (sellerId) => {
+    navigate(`/messages?receiverId=${sellerId}&orderId=${orderId}`);
+  };
 
   const handleCancelOrder = async () => {
     if (!canCancel) return;
@@ -171,6 +178,7 @@ export default function OrderDetail() {
                 <th className="px-4 py-2 font-medium">Price</th>
                 <th className="px-4 py-2 font-medium">Qty</th>
                 <th className="px-4 py-2 font-medium">Subtotal</th>
+                <th className="px-4 py-2 font-medium">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -209,6 +217,19 @@ export default function OrderDetail() {
                   <td className="px-4 py-2">{item.quantity}</td>
                   <td className="px-4 py-2">
                     {formatCurrency((item.price || 0) * (item.quantity || 0))}
+                  </td>
+                  <td className="px-4 py-2">
+                    {item.sellerId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleContactSeller(item.sellerId)}
+                        className="inline-flex items-center gap-1"
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        Contact Seller
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

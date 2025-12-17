@@ -25,6 +25,7 @@ import SellProduct from "./pages/SellProduct";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Messages from "./pages/Messages";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { isTokenValid } from "./utils/auth";
 
@@ -139,6 +140,11 @@ export default function App() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute>
+                <Messages />
               </ProtectedRoute>
             } />
             {/* 404 Catch-all route */}

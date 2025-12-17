@@ -22,8 +22,10 @@ import {
   FaUser,
   FaBox,
   FaEdit,
+  FaComments,
 } from "react-icons/fa";
 import { getOrderById, updateOrderStatus } from "../../services/orderService";
+import { sendMessage } from "../../services/messageService";
 
 const SellerOrderDetail = () => {
   const { orderId } = useParams();
@@ -264,11 +266,21 @@ const SellerOrderDetail = () => {
                     <br />
                     {order.shippingAddress?.fullName || "N/A"}
                   </div>
-                  <div>
+                  <div className="mb-2">
                     <strong>Contact:</strong>
                     <br />
                     {order.shippingAddress?.phoneNumber || "N/A"}
                   </div>
+                  {order.userId && (
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => navigate(`/messages?receiverId=${order.userId}&orderId=${order.id}`)}
+                      className="mt-2"
+                    >
+                      <FaComments className="me-1" /> Message Customer
+                    </Button>
+                  )}
                 </Card.Body>
               </Card>
             </Col>
