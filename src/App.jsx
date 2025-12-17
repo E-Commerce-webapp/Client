@@ -23,6 +23,8 @@ import SellerOrderDetail from "./pages/SellerDashboard/SellerOrderDetail";
 import BecomeSeller from "./pages/BecomeSeller";
 import SellProduct from "./pages/SellProduct";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { isTokenValid } from "./utils/auth";
 
@@ -42,7 +44,6 @@ export default function App() {
       const internalProducts = internalRes.data || [];
 
       const merged = [...internalProducts, ...externalProducts];
-      console.log("Fetched products (external + internal):", merged);
       setProducts(merged);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -135,6 +136,13 @@ export default function App() {
                 <OrderDetail />
               </ProtectedRoute>
             } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } />
+            {/* 404 Catch-all route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </NotificationProvider>

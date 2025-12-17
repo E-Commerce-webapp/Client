@@ -13,8 +13,10 @@ export default function SellProduct() {
     price: "",
     category: "",
     stock: 1,
-    imageBase64: "",
   });
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const [storeId, setStoreId] = useState("");
   const [isStoreLoading, setIsStoreLoading] = useState(true);
@@ -97,7 +99,8 @@ export default function SellProduct() {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) {
-      setFormData((p) => ({ ...p, imageBase64: "" }));
+      setImageFile(null);
+      setImagePreview("");
       return;
     }
 
@@ -111,14 +114,13 @@ export default function SellProduct() {
       return;
     }
 
+    setImageFile(file);
+    setError("");
+
+    // Create preview URL
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64 = reader.result;
-      setFormData((p) => ({
-        ...p,
-        imageBase64: typeof base64 === "string" ? base64 : "",
-      }));
-      setError("");
+      setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -142,22 +144,30 @@ export default function SellProduct() {
       return;
     }
 
+    if (!imageFile) {
+      setError("Please upload a product image.");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
-      const payload = {
-        title: formData.name.trim(),
-        description: formData.description.trim(),
-        category: formData.category.trim(),
-        price: parseFloat(formData.price),
-        stock: Number(formData.stock),
-        images: formData.imageBase64 ? [formData.imageBase64] : [], 
-        storeId,
-      };
+      // Create FormData for multipart/form-data request
+      const formDataToSend = new FormData();
+      formDataToSend.append("title", formData.name.trim());
+      formDataToSend.append("description", formData.description.trim());
+      formDataToSend.append("category", formData.category.trim());
+      formDataToSend.append("price", parseFloat(formData.price).toString());
+      formDataToSend.append("stock", Number(formData.stock).toString());
+      formDataToSend.append("storeId", storeId);
+      formDataToSend.append("image", imageFile);
 
-      const res = await api.post("/products", payload);
+      const res = await api.post("/products", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-      console.log("Product created:", res.data);
       setSuccess("Product listed successfully!");
 
       setFormData({
@@ -166,12 +176,13 @@ export default function SellProduct() {
         price: "",
         category: "",
         stock: 1,
-        imageBase64: "",
       });
+      setImageFile(null);
+      setImagePreview("");
     } catch (err) {
       console.error("Error submitting product:", err);
       setError(
-        err.response?.data?.message || "Failed to list product. Please try again."
+        err.response?.data?.message || err.response?.data?.error || "Failed to list product. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -299,13 +310,13 @@ export default function SellProduct() {
               disabled={isLoading || isStoreLoading}
             />
             <p className="text-xs text-muted-foreground">
-              Optional, but recommended. Upload a clear photo of your product.
+              Required. Upload a clear photo of your product.
             </p>
 
-            {formData.imageBase64 && (
+            {imagePreview && (
               <div className="mt-2 overflow-hidden rounded-lg border border-border bg-muted">
                 <img
-                  src={formData.imageBase64}
+                  src={imagePreview}
                   alt="Preview"
                   className="h-48 w-full object-cover"
                 />

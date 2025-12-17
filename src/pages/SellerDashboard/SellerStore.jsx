@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Card, Row, Col, Badge, Spinner, Alert } from "react-bootstrap";
 import axios from "axios";
 import ProductCard from "../../components/ProductCard";
 
@@ -79,28 +78,26 @@ const SellerStore = () => {
     fetchStoreAndProducts();
   }, [baseUrl, token]);
 
-  const renderStatusBadge = (status) => {
-    if (!status) return null;
+  const getStatusBadgeClasses = (status) => {
+    if (!status) return "";
     const normalized = status.toString();
-    let variant = "secondary";
+    
+    if (normalized === "ACTIVE") return "bg-emerald-500/20 text-emerald-700 border-emerald-400/40";
+    if (normalized === "PENDING") return "bg-amber-500/20 text-amber-700 border-amber-400/40";
+    if (normalized === "SUSPENDED") return "bg-red-500/20 text-red-700 border-red-400/40";
+    return "bg-zinc-500/20 text-zinc-700 border-zinc-400/40";
+  };
 
-    if (normalized === "ACTIVE") variant = "success";
-    else if (normalized === "PENDING") variant = "warning";
-    else if (normalized === "SUSPENDED") variant = "danger";
-
-    return (
-      <Badge bg={variant} className="ms-2">
-        {normalized.charAt(0) + normalized.slice(1).toLowerCase()}
-      </Badge>
-    );
+  const formatStatus = (status) => {
+    if (!status) return "";
+    const normalized = status.toString();
+    return normalized.charAt(0) + normalized.slice(1).toLowerCase();
   };
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "300px" }}>
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+      <div className="flex min-h-[300px] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
       </div>
     );
   }
@@ -108,7 +105,9 @@ const SellerStore = () => {
   if (error) {
     return (
       <div className="p-4">
-        <Alert variant="danger">{error}</Alert>
+        <div className="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
       </div>
     );
   }
@@ -116,57 +115,59 @@ const SellerStore = () => {
   if (!store) {
     return (
       <div className="p-4">
-        <Alert variant="info">No store found for your account.</Alert>
+        <div className="rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-700">
+          No store found for your account.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-4">
-      <h2 className="fw-bold mb-4">
+      <h2 className="mb-4 flex items-center text-xl font-bold text-foreground">
         My Store
-        {renderStatusBadge(store.status)}
+        {store.status && (
+          <span className={`ml-2 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClasses(store.status)}`}>
+            {formatStatus(store.status)}
+          </span>
+        )}
       </h2>
 
-      <Card className="border-0 shadow-sm mb-4">
-        <Card.Body>
-          <Row className="mb-3">
-            <Col md={6}>
-              <h4 className="fw-bold mb-1">{store.name}</h4>
-              <div className="text-muted">Store ID: {store.id}</div>
-            </Col>
-            <Col md={6} className="text-md-end mt-3 mt-md-0">
-              <div className="text-muted">Phone</div>
-              <div className="fw-semibold">{store.phoneNumber || "Not provided"}</div>
-            </Col>
-          </Row>
+      <div className="mb-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 grid gap-4 md:grid-cols-2">
+          <div>
+            <h4 className="mb-1 text-lg font-bold text-foreground">{store.name}</h4>
+            <div className="text-sm text-muted-foreground">Store ID: {store.id}</div>
+          </div>
+          <div className="md:text-right">
+            <div className="text-sm text-muted-foreground">Phone</div>
+            <div className="font-semibold text-foreground">{store.phoneNumber || "Not provided"}</div>
+          </div>
+        </div>
 
-          <Row className="mb-3">
-            <Col md={6}>
-              <div className="text-muted mb-1">Address</div>
-              <div>{store.address || "Not provided"}</div>
-            </Col>
-          </Row>
+        <div className="mb-3">
+          <div className="mb-1 text-sm text-muted-foreground">Address</div>
+          <div className="text-foreground">{store.address || "Not provided"}</div>
+        </div>
 
-          <Row>
-            <Col>
-              <div className="text-muted mb-1">Description</div>
-              <div>{store.description || "No description provided."}</div>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+        <div>
+          <div className="mb-1 text-sm text-muted-foreground">Description</div>
+          <div className="text-foreground">{store.description || "No description provided."}</div>
+        </div>
+      </div>
 
-      <h4 className="fw-bold mb-3">Products in this Store</h4>
+      <h4 className="mb-3 text-lg font-bold text-foreground">Products in this Store</h4>
 
       {products.length === 0 ? (
-        <Alert variant="info">You have no products in this store yet.</Alert>
+        <div className="rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-700">
+          You have no products in this store yet.
+        </div>
       ) : (
-        <Row className="g-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
-        </Row>
+        </div>
       )}
     </div>
   );

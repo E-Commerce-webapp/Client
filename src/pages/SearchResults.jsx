@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import axios from "axios";
 import ProductCard from "../components/ProductCard";
 
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
@@ -10,34 +12,47 @@ export default function SearchResults() {
   const query = searchParams.get("q") || "";
 
   useEffect(() => {
-    setIsLoading(true);
+    const fetchAndSearch = async () => {
+      setIsLoading(true);
 
-    const timer = setTimeout(() => {
-      if (query.trim()) {
-        const results = products
-          .filter((product) => {
-            const searchLower = query.toLowerCase();
-            const productName = product.name.toLowerCase();
-            const productDesc = product.description.toLowerCase();
-            return (
-              productName.includes(searchLower) ||
-              productDesc.includes(searchLower)
-            );
-          })
-          .map((product) => ({
-            ...product,
-            seller_name:
-              users.find((u) => u.user_id === product.seller_id)?.username ??
-              "Unknown Seller",
-          }));
+      if (!query.trim()) {
+        setSearchResults([]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch products from API
+        const [externalRes, internalRes] = await Promise.all([
+          axios.get(`${baseUrl}/products/external`).catch(() => ({ data: [] })),
+          axios.get(`${baseUrl}/products`).catch(() => ({ data: [] })),
+        ]);
+
+        const allProducts = [
+          ...(internalRes.data || []),
+          ...(externalRes.data || []),
+        ];
+
+        const searchLower = query.toLowerCase();
+        const results = allProducts.filter((product) => {
+          const productTitle = (product.title || product.name || "").toLowerCase();
+          const productDesc = (product.description || "").toLowerCase();
+          return (
+            productTitle.includes(searchLower) ||
+            productDesc.includes(searchLower)
+          );
+        });
 
         setSearchResults(results);
-      } else {
+      } catch (error) {
+        console.error("Error searching products:", error);
         setSearchResults([]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }, 300);
+    };
 
+    const timer = setTimeout(fetchAndSearch, 300);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -62,7 +77,7 @@ export default function SearchResults() {
       {searchResults.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {searchResults.map((product) => (
-            <ProductCard key={product.product_id} product={product} />
+            <ProductCard key={product.id || product.product_id} product={product} />
           ))}
         </div>
       ) : (
