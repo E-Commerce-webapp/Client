@@ -1,8 +1,9 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
 import { isTokenValid } from "../utils/auth";
+import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,31 @@ export default function Navbar() {
   const token = localStorage.getItem("token");
   const loggedIn = token && isTokenValid(token);
   const navigate = useNavigate();
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  const [isASeller, setIsASeller] = useState(null);
+
+  useEffect(() => {
+    const fetchSellerStatus = async () => {
+      if (!loggedIn) {
+        setIsASeller(null);
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${baseUrl}/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setIsASeller(!!res.data?.isASeller);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+        }
+        setIsASeller(null);
+      }
+    };
+
+    fetchSellerStatus();
+  }, [baseUrl, loggedIn, token]);
 
   const userName = useMemo(() => {
     if (!token) return "Account";
@@ -77,10 +103,17 @@ export default function Navbar() {
             <span className="hidden sm:inline">Home</span>
           </NavLink>
 
-          {loggedIn && (
+          {loggedIn && isASeller === true && (
             <NavLink to="/seller" className={navLinkClass}>
               <Store className="h-4 w-4" />
               <span className="hidden sm:inline">Seller Hub</span>
+            </NavLink>
+          )}
+
+          {loggedIn && isASeller === false && (
+            <NavLink to="/become-seller" className={navLinkClass}>
+              <Store className="h-4 w-4" />
+              <span className="hidden sm:inline">Become a Seller</span>
             </NavLink>
           )}
 
