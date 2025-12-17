@@ -57,9 +57,18 @@ const SellerStore = () => {
         setProducts(sellerProducts);
       } catch (err) {
         console.error("Error fetching store:", err);
+        
+        // If 404, user doesn't have a store yet - not an error, just no store
+        if (err.response?.status === 404) {
+          setStore(null);
+          setLoading(false);
+          return;
+        }
+        
         const message =
+          err.response?.data?.error ||
           err.response?.data?.message ||
-          err.response?.data ||
+          err.message ||
           "Failed to load store information.";
         setError(typeof message === "string" ? message : "Failed to load store information.");
       } finally {
