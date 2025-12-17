@@ -57,3 +57,18 @@ export const getUnreadCount = async () => {
     throw error;
   }
 };
+
+/**
+ * Get seller info by store ID
+ * @param {string} storeId - Store ID
+ * @returns {Promise} Response with seller info (sellerId, sellerName, storeName)
+ */
+export const getSellerByStoreId = async (storeId) => {
+  try {
+    const response = await api.get(`/api/messages/store/${storeId}/seller`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching seller info:", error);
+    throw error;
+  }
+};

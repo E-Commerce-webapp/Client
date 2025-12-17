@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getConversations, getConversationMessages, sendMessage } from "../services/messageService";
+import { getConversations, getConversationMessages, sendMessage, getSellerByStoreId } from "../services/messageService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,17 +17,46 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [newConversationMode, setNewConversationMode] = useState(false);
+  const [sellerInfo, setSellerInfo] = useState(null);
   const messagesEndRef = useRef(null);
   
   const receiverId = searchParams.get("receiverId");
   const orderId = searchParams.get("orderId");
+  const storeId = searchParams.get("storeId");
+  const productId = searchParams.get("productId");
 
   useEffect(() => {
     fetchConversations();
   }, []);
 
   useEffect(() => {
-    if (receiverId && conversations.length >= 0 && !loading) {
+    const initFromStoreId = async () => {
+      if (storeId && !loading) {
+        try {
+          const info = await getSellerByStoreId(storeId);
+          setSellerInfo(info);
+          
+          const existingConv = conversations.find(conv => 
+            conv.participants.includes(info.sellerId)
+          );
+          
+          if (existingConv) {
+            fetchMessages(existingConv.id);
+          } else {
+            setNewConversationMode(true);
+          }
+        } catch (err) {
+          setError("Failed to load seller info");
+          console.error(err);
+        }
+      }
+    };
+    
+    initFromStoreId();
+  }, [storeId, conversations, loading]);
+
+  useEffect(() => {
+    if (receiverId && !storeId && conversations.length >= 0 && !loading) {
       const existingConv = conversations.find(conv => 
         conv.participants.includes(receiverId) && 
         (!orderId || conv.orderId === orderId)
@@ -39,7 +68,7 @@ export default function Messages() {
         setNewConversationMode(true);
       }
     }
-  }, [receiverId, orderId, conversations, loading]);
+  }, [receiverId, orderId, storeId, conversations, loading]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -78,10 +107,12 @@ export default function Messages() {
 
     try {
       setSending(true);
+      const targetReceiverId = selectedConversation 
+        ? selectedConversation.participants.find(p => p !== getCurrentUserId())
+        : (sellerInfo?.sellerId || receiverId);
+      
       const messageData = {
-        receiverId: selectedConversation 
-          ? selectedConversation.participants.find(p => p !== getCurrentUserId())
-          : receiverId,
+        receiverId: targetReceiverId,
         content: newMessage.trim(),
         orderId: selectedConversation?.orderId || orderId || null
       };
@@ -283,13 +314,19 @@ export default function Messages() {
                   </Button>
                 </form>
               </>
-            ) : newConversationMode && receiverId ? (
+            ) : newConversationMode && (receiverId || sellerInfo) ? (
               <>
                 <div className="flex-1 p-4 flex items-center justify-center text-zinc-500">
                   <div className="text-center">
                     <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>Start a new conversation</p>
+                    {sellerInfo && (
+                      <p className="text-sm mt-2 text-zinc-300">
+                        Contacting: <span className="font-medium">{sellerInfo.storeName}</span>
+                      </p>
+                    )}
                     {orderId && <p className="text-xs mt-1">Related to Order #{orderId.slice(-8)}</p>}
+                    {productId && <p className="text-xs mt-1">About a product inquiry</p>}
                   </div>
                 </div>
                 <form
