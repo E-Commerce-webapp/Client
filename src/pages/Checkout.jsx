@@ -176,7 +176,7 @@ export default function Checkout() {
           item.image || item.images?.[0] || "/images/placeholder.jpg",
         quantity: item.quantity,
         price: parseFloat(item.price),
-        sellerId: item.seller_id || "default-seller",
+        sellerId: item.sellerId || null,
       })),
       shippingAddress: {
         fullName: `${formData.firstName} ${formData.lastName}`.trim(),
