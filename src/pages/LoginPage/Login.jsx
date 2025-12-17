@@ -70,15 +70,22 @@ const Login = () => {
       setError("");
       setIsLoading(true);
 
-      const response = await axios.post(`${baseUrl}/auth/register`, {
+      await axios.post(`${baseUrl}/auth/register`, {
         email: formData.email,
         password: formData.password,
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         address: formData.address,
       });
 
-      if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
+      // Registration successful, now auto-login
+      const loginResponse = await axios.post(`${baseUrl}/auth/login`, {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (loginResponse.data.token) {
+        localStorage.setItem("token", loginResponse.data.token);
         navigate("/");
       }
     } catch (err) {
