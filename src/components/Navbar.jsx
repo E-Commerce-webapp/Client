@@ -33,6 +33,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const [isASeller, setIsASeller] = useState(null);
+  const [userFullName, setUserFullName] = useState(null);
 
   useEffect(() => {
     const fetchSellerStatus = async () => {
@@ -46,11 +47,15 @@ export default function Navbar() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsASeller(!!res.data?.isASeller);
+        if (res.data?.firstName || res.data?.lastName) {
+          setUserFullName(`${res.data.firstName || ''} ${res.data.lastName || ''}`.trim());
+        }
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem("token");
         }
         setIsASeller(null);
+        setUserFullName(null);
       }
     };
 
@@ -58,6 +63,7 @@ export default function Navbar() {
   }, [baseUrl, loggedIn, token]);
 
   const userName = useMemo(() => {
+    if (userFullName) return userFullName;
     if (!token) return "Account";
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
@@ -65,7 +71,7 @@ export default function Navbar() {
     } catch {
       return "Account";
     }
-  }, [token]);
+  }, [token, userFullName]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");

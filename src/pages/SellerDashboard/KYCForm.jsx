@@ -201,7 +201,7 @@ export default function KYCForm({ onComplete }) {
           <>
             <div className="mb-4 space-y-1 text-sm">
               <p className="font-medium text-foreground">
-                Hello, {user.name || user.email}
+                Hello, {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email}
               </p>
               <p className="text-xs text-muted-foreground">
                 Email status:{" "}

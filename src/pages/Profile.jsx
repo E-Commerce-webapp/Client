@@ -75,10 +75,17 @@ export default function Profile() {
     fetchUserData();
   }, [token, navigate, baseUrl]);
 
-  const initials = useMemo(() => {
-    const s = userData?.name || userData?.email || "U";
-    return s.trim().charAt(0).toUpperCase();
+  const fullName = useMemo(() => {
+    if (userData?.firstName || userData?.lastName) {
+      return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+    }
+    return null;
   }, [userData]);
+
+  const initials = useMemo(() => {
+    const s = fullName || userData?.email || "U";
+    return s.trim().charAt(0).toUpperCase();
+  }, [fullName, userData]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -88,7 +95,7 @@ export default function Profile() {
   const openShippingModal = () => {
     const saved = userData?.savedShippingAddress;
     setShippingForm({
-      fullName: saved?.fullName || userData?.name || "",
+      fullName: saved?.fullName || fullName || "",
       addressLine1: saved?.addressLine1 || "",
       city: saved?.city || "",
       postalCode: saved?.postalCode || "",
@@ -190,7 +197,7 @@ export default function Profile() {
             <div>
               <p className="text-sm text-muted-foreground">Signed in as</p>
               <h3 className="text-lg font-semibold text-foreground">
-                {userData.name || "Unnamed User"}
+                {fullName || "Unnamed User"}
               </h3>
               <p className="text-sm text-muted-foreground">{userData.email}</p>
 
@@ -227,7 +234,7 @@ export default function Profile() {
             <div className="mt-3 grid gap-4 text-sm md:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-medium text-muted-foreground">Name</p>
-                <p className="text-foreground">{userData.name || "Not provided"}</p>
+                <p className="text-foreground">{fullName || "Not provided"}</p>
               </div>
 
               <div>
