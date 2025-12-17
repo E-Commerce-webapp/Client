@@ -188,7 +188,27 @@ export default function ProductDetail({ products = [] }) {
             >
               Go to Cart
             </Button>
+
+            {product.storeId && isLoggedIn && (
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => navigate(`/messages?storeId=${product.storeId}&productId=${productId}`)}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Contact Seller
+              </Button>
+            )}
           </div>
+
+          {product.storeId && !isLoggedIn && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
+                Log in
+              </Link>{" "}
+              to contact the seller.
+            </p>
+          )}
 
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
             <p className="text-muted-foreground">
