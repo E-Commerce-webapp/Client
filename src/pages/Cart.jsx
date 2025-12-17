@@ -76,13 +76,14 @@ export default function Cart() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  disabled={item.quantity <= 1}
                 >
                   -
                 </Button>
@@ -93,20 +94,26 @@ export default function Cart() {
                   onChange={(e) => {
                     const newQty = parseInt(e.target.value);
                     if (!isNaN(newQty) && newQty >= 1) {
-                      updateQuantity(item.id, newQty);
+                      const maxStock = item.stock || 999;
+                      updateQuantity(item.id, Math.min(newQty, maxStock));
                     }
                   }}
                   min={1}
+                  max={item.stock || 999}
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  disabled={item.quantity >= (item.stock || 999)}
                 >
                   +
                 </Button>
               </div>
+              {item.stock && item.quantity >= item.stock && (
+                <span className="text-xs text-amber-500">Max stock reached</span>
+              )}
             </div>
 
             <div className="ml-auto flex flex-col items-end gap-1">

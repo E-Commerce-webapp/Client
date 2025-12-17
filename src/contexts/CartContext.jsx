@@ -42,11 +42,12 @@ export const CartProvider = ({ children }) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
 
       if (existingItem) {
+        const maxStock = existingItem.stock || 999;
         return prevCart.map((item) =>
           item.id === product.id
             ? {
                 ...item,
-                quantity: Math.max(1, item.quantity + (quantity || 1)),
+                quantity: Math.min(maxStock, Math.max(1, item.quantity + (quantity || 1))),
               }
             : item
         );
@@ -64,6 +65,7 @@ export const CartProvider = ({ children }) => {
           quantity: Math.max(1, quantity || 1),
           sellerId: product.sellerId || product.seller_id || null,
           storeId: product.storeId || null,
+          stock: product.stock ?? product.quantity ?? 999,
         },
       ];
     });
@@ -84,11 +86,13 @@ export const CartProvider = ({ children }) => {
     }
 
     setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.id === productId
-          ? { ...item, quantity: Math.max(1, Math.floor(quantity)) }
-          : item
-      )
+      prevCart.map((item) => {
+        if (item.id === productId) {
+          const maxStock = item.stock || 999;
+          return { ...item, quantity: Math.min(maxStock, Math.max(1, Math.floor(quantity))) };
+        }
+        return item;
+      })
     );
   };
 
