@@ -57,9 +57,9 @@ export default function Messages() {
 
   useEffect(() => {
     if (receiverId && !storeId && conversations.length >= 0 && !loading) {
+      // Find existing conversation with this user (ignore orderId - one conversation per user pair)
       const existingConv = conversations.find(conv => 
-        conv.participants.includes(receiverId) && 
-        (!orderId || conv.orderId === orderId)
+        conv.participants.includes(receiverId)
       );
       
       if (existingConv) {
@@ -68,7 +68,7 @@ export default function Messages() {
         setNewConversationMode(true);
       }
     }
-  }, [receiverId, orderId, storeId, conversations, loading]);
+  }, [receiverId, storeId, conversations, loading]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
