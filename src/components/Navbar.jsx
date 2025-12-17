@@ -25,6 +25,8 @@ import {
   UserPlus,
   Package,
   MessageCircle,
+  Bell,
+  Check,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -36,6 +38,8 @@ export default function Navbar() {
   const [isASeller, setIsASeller] = useState(null);
   const [userFullName, setUserFullName] = useState(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   useEffect(() => {
     const fetchSellerStatus = async () => {
@@ -88,6 +92,90 @@ export default function Navbar() {
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [baseUrl, loggedIn, token]);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!loggedIn) {
+        setNotifications([]);
+        setUnreadNotificationCount(0);
+        return;
+      }
+
+      try {
+        const [notifRes, countRes] = await Promise.all([
+          axios.get(`${baseUrl}/api/notifications`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${baseUrl}/api/notifications/unread/count`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        setNotifications(notifRes.data?.slice(0, 10) || []);
+        setUnreadNotificationCount(countRes.data?.count || 0);
+      } catch (err) {
+        console.error("Error fetching notifications:", err);
+        setNotifications([]);
+        setUnreadNotificationCount(0);
+      }
+    };
+
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [baseUrl, loggedIn, token]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await axios.put(`${baseUrl}/api/notifications/read-all`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      setUnreadNotificationCount(0);
+    } catch (err) {
+      console.error("Error marking notifications as read:", err);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      try {
+        await axios.put(`${baseUrl}/api/notifications/${notification.id}/read`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications(notifications.map(n => 
+          n.id === notification.id ? { ...n, isRead: true } : n
+        ));
+        setUnreadNotificationCount(prev => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error("Error marking notification as read:", err);
+      }
+    }
+    
+    if (notification.relatedOrderId) {
+      if (notification.type === "NEW_ORDER" && isASeller) {
+        navigate(`/seller/orders/${notification.relatedOrderId}`);
+      } else {
+        navigate(`/orders/${notification.relatedOrderId}`);
+      }
+    }
+  };
+
+  const formatNotificationTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   const userName = useMemo(() => {
     if (userFullName) return userFullName;
@@ -161,6 +249,71 @@ export default function Navbar() {
               )}
             </div>
           </NavLink>
+
+          {loggedIn && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative inline-flex items-center rounded-full px-2 text-zinc-300 cursor-pointer hover:bg-zinc-800/70 hover:text-zinc-50 transition-colors"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-80 border-zinc-700 bg-zinc-900 text-zinc-100 max-h-96 overflow-y-auto"
+              >
+                <div className="flex items-center justify-between px-3 py-2">
+                  <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                  {unreadNotificationCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Check className="h-3 w-3" />
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                {notifications.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-zinc-500 text-sm">
+                    No notifications yet
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={`cursor-pointer flex flex-col items-start gap-1 px-3 py-2 ${
+                        !notification.isRead ? "bg-zinc-800/50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        {!notification.isRead && (
+                          <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        )}
+                        <div className={`flex-1 ${notification.isRead ? "ml-4" : ""}`}>
+                          <p className="font-medium text-sm text-zinc-100">{notification.title}</p>
+                          <p className="text-xs text-zinc-400 line-clamp-2">{notification.message}</p>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {formatNotificationTime(notification.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
