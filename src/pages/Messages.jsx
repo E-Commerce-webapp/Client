@@ -18,6 +18,7 @@ export default function Messages() {
   const [error, setError] = useState(null);
   const [newConversationMode, setNewConversationMode] = useState(false);
   const [sellerInfo, setSellerInfo] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const messagesEndRef = useRef(null);
   
   const receiverId = searchParams.get("receiverId");
@@ -27,6 +28,26 @@ export default function Messages() {
 
   useEffect(() => {
     fetchConversations();
+  }, []);
+
+  useEffect(() => {
+    // Fetch current user ID from the API since JWT only contains email
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUserId(data.id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch current user:", err);
+      }
+    };
+    fetchCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -139,16 +160,7 @@ export default function Messages() {
     }
   };
 
-  const getCurrentUserId = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      return payload.userId || payload.id;
-    } catch {
-      return null;
-    }
-  };
+  const getCurrentUserId = () => currentUserId;
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -267,9 +279,7 @@ export default function Messages() {
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-4">
                     {messages.map((msg) => {
-                      const isOwn = msg.senderId === getCurrentUserId() || 
-                        (selectedConversation.participantNames[msg.senderId] && 
-                         Object.keys(selectedConversation.participantNames).indexOf(msg.senderId) === 0);
+                      const isOwn = msg.senderId === currentUserId;
                       
                       return (
                         <div
