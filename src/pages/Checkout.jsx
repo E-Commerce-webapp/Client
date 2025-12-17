@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { isTokenValid } from "../utils/auth";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import StripeCheckoutForm from "../components/StripeCheckoutForm";
 
 import {
   Dialog,
@@ -13,6 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+// Initialize Stripe
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_mock_key"
+);
 
 export default function Checkout() {
   const { cart, cartTotal, clearCart } = useCart();
@@ -31,13 +39,16 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentStep, setPaymentStep] = useState("shipping"); // "shipping" or "payment"
+  const [pendingOrderData, setPendingOrderData] = useState(null);
+  const [orderCompleted, setOrderCompleted] = useState(false);
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveShipping, setSaveShipping] = useState(true);
-  const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [pendingOrderId] = useState(null);
   const [savingInfo, setSavingInfo] = useState(false);
 
-  const [userSavedInfo, setUserSavedInfo] = useState({
+  const [_, setUserSavedInfo] = useState({
     hasShipping: false,
   });
 
@@ -83,6 +94,22 @@ export default function Checkout() {
     loadSavedInfo();
   }, [baseUrl, token]);
 
+  // Show loading state after order completed while navigating
+  if (orderCompleted) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
+        <div className="mb-4 text-4xl animate-bounce">✨</div>
+        <p className="mb-2 text-lg font-semibold text-foreground">
+          Payment Successful!
+        </p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Preparing your order confirmation...
+        </p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   if (!cart.length) {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
@@ -103,15 +130,16 @@ export default function Checkout() {
   };
 
   const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-      amount || 0
-    );
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
 
   const shippingCost = 10.0;
   const taxAmount = 0.0;
   const totalWithExtras = cartTotal + shippingCost + taxAmount;
 
-  const placeOrder = async (e) => {
+  const proceedToPayment = (e) => {
     e.preventDefault();
     setError("");
 
@@ -131,59 +159,101 @@ export default function Checkout() {
       "country",
       "email",
     ];
-    const missing = requiredFields.some((k) => !String(formData[k] || "").trim());
+    const missing = requiredFields.some(
+      (k) => !String(formData[k] || "").trim()
+    );
     if (missing) {
       setError("Please fill in all required fields.");
       return;
     }
 
+    // Store order data and move to payment step
+    const orderData = {
+      items: cart.map((item) => ({
+        productId: item.id,
+        productTitle: item.title || item.name,
+        productImage:
+          item.image || item.images?.[0] || "/images/placeholder.jpg",
+        quantity: item.quantity,
+        price: parseFloat(item.price),
+        sellerId: item.seller_id || "default-seller",
+      })),
+      shippingAddress: {
+        fullName: `${formData.firstName} ${formData.lastName}`.trim(),
+        addressLine1: formData.address,
+        addressLine2: null,
+        city: formData.city,
+        postalCode: formData.zipCode,
+        country: formData.country,
+        phoneNumber: formData.email,
+      },
+      paymentMethod: "card",
+      shippingAmount: shippingCost,
+      taxAmount: taxAmount,
+      totalAmount: totalWithExtras,
+    };
+
+    setPendingOrderData(orderData);
+    setPaymentStep("payment");
+  };
+
+  const handlePaymentSuccess = async (paymentResult) => {
+    if (!pendingOrderData) {
+      setError("Order data is missing. Please try again.");
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(""); // Clear any previous errors
 
-      const orderData = {
-        items: cart.map((item) => ({
-          productId: item.id,
-          productTitle: item.title || item.name,
-          productImage: item.image || item.images?.[0] || "/images/placeholder.jpg",
-          quantity: item.quantity,
-          price: parseFloat(item.price),
-          sellerId: item.seller_id || "default-seller",
-        })),
-        shippingAddress: {
-          fullName: `${formData.firstName} ${formData.lastName}`.trim(),
-          addressLine1: formData.address,
-          addressLine2: null,
-          city: formData.city,
-          postalCode: formData.zipCode,
-          country: formData.country,
-          phoneNumber: formData.email,
-        },
-        paymentMethod: "card",
-        shippingAmount: shippingCost,
-        taxAmount: taxAmount,
-        totalAmount: totalWithExtras,
+      // Add payment information to order
+      const orderDataWithPayment = {
+        ...pendingOrderData,
+        paymentIntentId: paymentResult.paymentIntentId,
+        paymentStatus: paymentResult.status,
       };
 
-      const res = await axios.post(`${baseUrl}/orders`, orderData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.post(
+        `${baseUrl}/api/orders`,
+        orderDataWithPayment,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       const orderId = res.data?.id;
+
+      if (!orderId) {
+        throw new Error("Order ID not received from server");
+      }
+
+      // Mark order as completed to show success UI
+      setOrderCompleted(true);
+
+      // Clear cart after successful order
       clearCart();
 
-      if (!userSavedInfo.hasShipping) {
-        setPendingOrderId(orderId);
-        setSaveShipping(true);
-        setShowSaveModal(true);
-      } else {
+      // Brief delay to show success message, then navigate
+      setTimeout(() => {
         navigate(`/order-confirmation/${orderId}`);
-      }
+      }, 1500);
     } catch (err) {
-      console.error("Checkout error:", err);
-      setError(err.response?.data?.message || "Failed to place order. Please try again.");
+      console.error("Order creation error:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to create order. Please contact support.";
+      setError(errorMessage);
+      // Stay on payment page to show error
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentError = (errorMessage) => {
+    setError(errorMessage || "Payment failed. Please try again.");
+    setLoading(false);
   };
 
   const handleSaveInfo = async () => {
@@ -225,7 +295,9 @@ export default function Checkout() {
       <div className="mx-auto max-w-5xl px-4 py-6">
         <h2 className="mb-1 text-xl font-semibold text-foreground">Checkout</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Enter your shipping details and place your order.
+          {paymentStep === "shipping"
+            ? "Enter your shipping details to continue."
+            : "Complete your payment to place the order."}
         </p>
 
         {error && (
@@ -235,107 +307,157 @@ export default function Checkout() {
         )}
 
         <div className="grid gap-6 md:grid-cols-[2fr,1.3fr]">
-          <form
-            onSubmit={placeOrder}
-            className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm"
-          >
-            <h3 className="mb-2 text-sm font-semibold text-foreground">
-              Shipping Information
-            </h3>
+          {paymentStep === "shipping" ? (
+            <form
+              onSubmit={proceedToPayment}
+              className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm"
+            >
+              <h3 className="mb-2 text-sm font-semibold text-foreground">
+                Shipping Information
+              </h3>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">First Name</label>
-                <input
-                  name="firstName"
-                  type="text"
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    First Name
+                  </label>
+                  <input
+                    name="firstName"
+                    type="text"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    Last Name
+                  </label>
+                  <input
+                    name="lastName"
+                    type="text"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Last Name</label>
-                <input
-                  name="lastName"
-                  type="text"
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Address</label>
-              <input
-                name="address"
-                type="text"
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                value={formData.address}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">City</label>
-                <input
-                  name="city"
-                  type="text"
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                  value={formData.city}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">
-                  ZIP / Postal Code
+                  Address
                 </label>
                 <input
-                  name="zipCode"
+                  name="address"
                   type="text"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                  value={formData.zipCode}
+                  value={formData.address}
                   onChange={handleChange}
                   required
                 />
               </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    City
+                  </label>
+                  <input
+                    name="city"
+                    type="text"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    ZIP / Postal Code
+                  </label>
+                  <input
+                    name="zipCode"
+                    type="text"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.zipCode}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    Country
+                  </label>
+                  <input
+                    name="country"
+                    type="text"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                    value={formData.country}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Country</label>
+                <label className="text-xs font-medium text-foreground">
+                  Email
+                </label>
                 <input
-                  name="country"
-                  type="text"
+                  name="email"
+                  type="email"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                  value={formData.country}
+                  value={formData.email}
                   onChange={handleChange}
                   required
                 />
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Email</label>
-              <input
-                name="email"
-                type="email"
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
+              <div className="pt-2">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Processing..." : "Continue to Payment"}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Payment Information
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPaymentStep("shipping");
+                    setError("");
+                  }}
+                  disabled={loading}
+                >
+                  ← Back to Shipping
+                </Button>
+              </div>
 
-            <div className="pt-2">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Placing order..." : "Place Order"}
-              </Button>
+              {loading && (
+                <div className="mb-4 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                  <span className="inline-block animate-pulse">⏳</span>{" "}
+                  Processing your order... Please wait.
+                </div>
+              )}
+
+              <Elements stripe={stripePromise}>
+                <StripeCheckoutForm
+                  amount={totalWithExtras}
+                  onPaymentSuccess={handlePaymentSuccess}
+                  onPaymentError={handlePaymentError}
+                  loading={loading}
+                  disabled={loading}
+                />
+              </Elements>
             </div>
-          </form>
+          )}
 
           <div className="space-y-3 rounded-xl border border-border bg-card p-5 text-sm shadow-sm">
             <h3 className="mb-2 text-sm font-semibold text-foreground">
@@ -360,7 +482,9 @@ export default function Checkout() {
                       <div className="line-clamp-1 font-medium text-foreground">
                         {item.title || item.name}
                       </div>
-                      <div className="text-muted-foreground">Qty: {item.quantity}</div>
+                      <div className="text-muted-foreground">
+                        Qty: {item.quantity}
+                      </div>
                     </div>
                   </div>
                   <div className="font-semibold text-foreground">
@@ -393,7 +517,10 @@ export default function Checkout() {
         </div>
       </div>
 
-      <Dialog open={showSaveModal} onOpenChange={(open) => !open && handleSkipSave()}>
+      <Dialog
+        open={showSaveModal}
+        onOpenChange={(open) => !open && handleSkipSave()}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Save your shipping info?</DialogTitle>
@@ -416,7 +543,11 @@ export default function Checkout() {
           </div>
 
           <DialogFooter className="mt-4 gap-2 sm:gap-2">
-            <Button variant="outline" onClick={handleSkipSave} disabled={savingInfo}>
+            <Button
+              variant="outline"
+              onClick={handleSkipSave}
+              disabled={savingInfo}
+            >
               No, thanks
             </Button>
             <Button

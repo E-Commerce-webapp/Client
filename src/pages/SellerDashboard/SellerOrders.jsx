@@ -68,7 +68,7 @@ const SellerOrders = () => {
         minute: "2-digit",
       };
       return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (e) {
+    } catch {
       return "N/A";
     }
   };

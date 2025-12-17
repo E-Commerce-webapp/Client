@@ -70,7 +70,15 @@ export default function KYCForm({ onComplete }) {
   };
 
   const sendVerificationEmail = async () => {
-    const res = await axios.get(`${baseUrl}/become-seller`, {
+    // This endpoint requires store data and sends verification email
+    const payload = {
+      name: formData.storeName || "My Store",
+      phoneNumber: formData.phoneNumber || "",
+      address: formData.businessAddress || "",
+      description: formData.businessDescription || "",
+    };
+
+    const res = await axios.post(`${baseUrl}/users/become-seller`, payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -133,8 +141,7 @@ export default function KYCForm({ onComplete }) {
     } catch (err) {
       console.error("KYC error:", err);
       setError(
-        err.response?.data?.message ||
-          "Something went wrong. Please try again."
+        err.response?.data?.message || "Something went wrong. Please try again."
       );
     } finally {
       setSubmitting(false);

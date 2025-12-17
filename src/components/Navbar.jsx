@@ -56,7 +56,7 @@ export default function Navbar() {
       .join(" ");
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900/95 backdrop-blur">
+    <nav className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-linear-to-b from-zinc-950 to-zinc-900/95 backdrop-blur">
       <div className="flex h-14 w-full items-center gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
         <NavLink
           to="/"
@@ -89,7 +89,7 @@ export default function Navbar() {
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                <span className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
                   {cartCount > 9 ? "9+" : cartCount}
                 </span>
               )}

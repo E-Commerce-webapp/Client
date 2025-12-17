@@ -153,7 +153,7 @@ const NotificationDropdown = () => {
                   <span className="me-2" style={{ fontSize: "1.2rem" }}>
                     {getNotificationIcon(notification.type)}
                   </span>
-                  <div className="flex-grow-1">
+                  <div className="grow">
                     <div className="d-flex justify-content-between">
                       <strong
                         className={`${!notification.isRead ? "text-primary" : ""}`}

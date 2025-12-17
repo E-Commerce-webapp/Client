@@ -1,7 +1,7 @@
-import { createContext, useState, useEffect, useContext } from "react";
+import { createContext, useState, useEffect } from "react";
 
 // Create the context with default values
-const CartContext = createContext({
+export const CartContext = createContext({
   cart: [],
   cartTotal: 0,
   cartCount: 0,
@@ -123,12 +123,6 @@ export const CartProvider = ({ children }) => {
     </CartContext.Provider>
   );
 };
-const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-}
 
-export { CartContext, useCart };
+// Re-export useCart for backwards compatibility
+export { useCart } from "./useCart";
