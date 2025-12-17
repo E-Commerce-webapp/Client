@@ -35,6 +35,7 @@ export default function Navbar() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const [isASeller, setIsASeller] = useState(null);
   const [userFullName, setUserFullName] = useState(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   useEffect(() => {
     const fetchSellerStatus = async () => {
@@ -61,6 +62,31 @@ export default function Navbar() {
     };
 
     fetchSellerStatus();
+  }, [baseUrl, loggedIn, token]);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!loggedIn) {
+        setUnreadMessageCount(0);
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${baseUrl}/api/messages/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUnreadMessageCount(res.data?.unreadCount || 0);
+      } catch (err) {
+        console.error("Error fetching unread count:", err);
+        setUnreadMessageCount(0);
+      }
+    };
+
+    fetchUnreadCount();
+    
+    // Poll for new messages every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
   }, [baseUrl, loggedIn, token]);
 
   const userName = useMemo(() => {
@@ -175,6 +201,11 @@ export default function Navbar() {
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     <span>Messages</span>
+                    {unreadMessageCount > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[10px] font-semibold text-white">
+                        {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                      </span>
+                    )}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

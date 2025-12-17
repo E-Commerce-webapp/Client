@@ -18,10 +18,27 @@ export default function ProductDetail({ products = [] }) {
 
   const [quantity, setQuantity] = useState(1);
   const [reviewRefresh, setReviewRefresh] = useState(0);
+  const [userStoreId, setUserStoreId] = useState(null);
 
   const isLoggedIn = !!localStorage.getItem("token");
 
   const handleReviewSubmitted = () => setReviewRefresh((prev) => prev + 1);
+
+  useEffect(() => {
+    const fetchUserStore = async () => {
+      if (!isLoggedIn) {
+        setUserStoreId(null);
+        return;
+      }
+      try {
+        const res = await api.get("/stores/my-store");
+        setUserStoreId(res.data?.id || null);
+      } catch (err) {
+        setUserStoreId(null);
+      }
+    };
+    fetchUserStore();
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -190,7 +207,7 @@ export default function ProductDetail({ products = [] }) {
               Go to Cart
             </Button>
 
-            {product.storeId && isLoggedIn && (
+            {product.storeId && isLoggedIn && product.storeId !== userStoreId && (
               <Button
                 variant="outline"
                 className="w-full sm:w-auto"
