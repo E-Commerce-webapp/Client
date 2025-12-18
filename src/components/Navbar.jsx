@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../contexts/CartContext";
 import SearchBar from "./SearchBar";
@@ -32,6 +32,7 @@ import {
 export default function Navbar() {
   const { cartCount } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   
   // Use state for token to make it reactive
@@ -45,37 +46,41 @@ export default function Navbar() {
   // Compute loggedIn from token state
   const loggedIn = token && isTokenValid(token);
 
-  // Listen for storage changes (logout from other tabs) and re-check token periodically
+  // Sync token state with localStorage on route changes and other events
   useEffect(() => {
-    const handleStorageChange = () => {
-      const currentToken = localStorage.getItem("token");
-      setToken(currentToken);
-      if (!currentToken) {
-        // Clear all user-related state when token is removed
-        setIsASeller(null);
-        setUserFullName(null);
-        setUnreadMessageCount(0);
-        setNotifications([]);
-        setUnreadNotificationCount(0);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    
-    // Also check on focus in case logout happened in same tab
-    const handleFocus = () => {
+    const syncToken = () => {
       const currentToken = localStorage.getItem("token");
       if (currentToken !== token) {
-        handleStorageChange();
+        setToken(currentToken);
+        if (!currentToken) {
+          // Clear all user-related state when token is removed
+          setIsASeller(null);
+          setUserFullName(null);
+          setUnreadMessageCount(0);
+          setNotifications([]);
+          setUnreadNotificationCount(0);
+        }
       }
     };
-    window.addEventListener("focus", handleFocus);
+
+    // Sync immediately on mount and route change
+    syncToken();
+
+    // Listen for storage changes from other tabs
+    window.addEventListener("storage", syncToken);
+    
+    // Check on window focus
+    window.addEventListener("focus", syncToken);
+    
+    // Periodic check for same-tab changes (login/logout)
+    const interval = setInterval(syncToken, 1000);
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("storage", syncToken);
+      window.removeEventListener("focus", syncToken);
+      clearInterval(interval);
     };
-  }, [token]);
+  }, [token, location.pathname]);
 
   useEffect(() => {
     const fetchSellerStatus = async () => {
