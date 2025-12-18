@@ -56,6 +56,9 @@ const Login = () => {
 
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
+        if (response.data.userId) {
+          localStorage.setItem("userId", response.data.userId);
+        }
         navigate("/");
       }
     } catch (err) {
@@ -86,6 +89,9 @@ const Login = () => {
 
       if (loginResponse.data.token) {
         localStorage.setItem("token", loginResponse.data.token);
+        if (loginResponse.data.userId) {
+          localStorage.setItem("userId", loginResponse.data.userId);
+        }
         navigate("/");
       }
     } catch (err) {

@@ -242,8 +242,9 @@ export default function Navbar() {
     setNotifications([]);
     setUnreadNotificationCount(0);
     
-    // Remove token from storage
+    // Remove token and userId from storage
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
     navigate("/login");
   };
 
