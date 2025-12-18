@@ -23,6 +23,7 @@ import {
 import { useCart } from "../contexts/CartContext";
 
 import api from "../utils/api";
+import { checkReviewEligibility } from "../api/reviews";
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 
@@ -38,6 +39,8 @@ export default function ProductDetail({ products = [] }) {
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [userStoreId, setUserStoreId] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [reviewEligibility, setReviewEligibility] = useState(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem("token");
 
@@ -69,7 +72,36 @@ export default function ProductDetail({ products = [] }) {
     }
   };
 
-  const handleReviewSubmitted = () => setReviewRefresh((prev) => prev + 1);
+  const handleReviewSubmitted = () => {
+    setReviewRefresh((prev) => prev + 1);
+    // Refresh eligibility after submitting a review
+    if (isLoggedIn && productId) {
+      checkReviewEligibility(productId)
+        .then(setReviewEligibility)
+        .catch(() => setReviewEligibility(null));
+    }
+  };
+
+  // Check review eligibility when logged in
+  useEffect(() => {
+    const fetchEligibility = async () => {
+      if (!isLoggedIn || !productId) {
+        setReviewEligibility(null);
+        return;
+      }
+      setEligibilityLoading(true);
+      try {
+        const eligibility = await checkReviewEligibility(productId);
+        setReviewEligibility(eligibility);
+      } catch (err) {
+        console.error("Error checking review eligibility:", err);
+        setReviewEligibility(null);
+      } finally {
+        setEligibilityLoading(false);
+      }
+    };
+    fetchEligibility();
+  }, [isLoggedIn, productId, reviewRefresh]);
 
   useEffect(() => {
     const fetchUserStore = async () => {
@@ -382,12 +414,8 @@ export default function ProductDetail({ products = [] }) {
             <h2 className="text-xl font-semibold text-foreground">Customer Reviews</h2>
           </div>
 
-          {isLoggedIn ? (
-            <div className="mb-8 rounded-xl border border-border bg-card p-6">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Write a Review</h3>
-              <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
-            </div>
-          ) : (
+          {/* Review Form Section */}
+          {!isLoggedIn ? (
             <div className="mb-8 rounded-xl border border-border bg-muted/30 p-6 text-center">
               <Star className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
               <p className="text-sm text-muted-foreground">
@@ -396,6 +424,34 @@ export default function ProductDetail({ products = [] }) {
                 </Link>{" "}
                 to write a review
               </p>
+            </div>
+          ) : eligibilityLoading ? (
+            <div className="mb-8 rounded-xl border border-border bg-card p-6 text-center">
+              <div className="h-6 w-6 mx-auto animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
+            </div>
+          ) : reviewEligibility?.canReview ? (
+            <div className="mb-8 rounded-xl border border-border bg-card p-6">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Write a Review</h3>
+              <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
+            </div>
+          ) : reviewEligibility?.hasReviewed ? (
+            <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
+              <Star className="mx-auto h-8 w-8 text-emerald-500 fill-emerald-500 mb-2" />
+              <p className="text-sm font-medium text-emerald-500">You've already reviewed this product</p>
+              <p className="text-xs text-muted-foreground mt-1">Thank you for sharing your feedback!</p>
+            </div>
+          ) : !reviewEligibility?.hasPurchased ? (
+            <div className="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
+              <Package className="mx-auto h-8 w-8 text-amber-500 mb-2" />
+              <p className="text-sm font-medium text-amber-500">Purchase required to review</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                You can only review products after your order has been delivered
+              </p>
+            </div>
+          ) : (
+            <div className="mb-8 rounded-xl border border-border bg-muted/30 p-6 text-center">
+              <Star className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">Unable to check review eligibility</p>
             </div>
           )}
 

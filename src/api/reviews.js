@@ -42,3 +42,9 @@ export const deleteReview = async (reviewId) => {
   const response = await api.delete(`/reviews/${reviewId}`);
   return response.data;
 };
+
+// Check if user can review a product
+export const checkReviewEligibility = async (productId) => {
+  const response = await api.get(`/reviews/product/${productId}/eligibility`);
+  return response.data;
+};
