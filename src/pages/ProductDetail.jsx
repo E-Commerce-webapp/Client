@@ -11,7 +11,10 @@ import {
   Minus, 
   Plus,
   ChevronLeft,
-  Star
+  Star,
+  Pencil,
+  Send,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +26,7 @@ import {
 import { useCart } from "../contexts/CartContext";
 
 import api from "../utils/api";
-import { checkReviewEligibility } from "../api/reviews";
+import { checkReviewEligibility, getReviewsByProduct, updateReview } from "../api/reviews";
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 
@@ -41,8 +44,18 @@ export default function ProductDetail({ products = [] }) {
   const [copied, setCopied] = useState(false);
   const [reviewEligibility, setReviewEligibility] = useState(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  
+  // Edit review state
+  const [userReview, setUserReview] = useState(null);
+  const [isEditingReview, setIsEditingReview] = useState(false);
+  const [editRating, setEditRating] = useState(0);
+  const [editHoverRating, setEditHoverRating] = useState(0);
+  const [editText, setEditText] = useState('');
+  const [isUpdatingReview, setIsUpdatingReview] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem("token");
+  const currentUserId = localStorage.getItem("userId");
+  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -82,26 +95,67 @@ export default function ProductDetail({ products = [] }) {
     }
   };
 
-  // Check review eligibility when logged in
+  const handleStartEditReview = () => {
+    if (userReview) {
+      setEditRating(userReview.rating);
+      setEditText(userReview.reviewText);
+      setIsEditingReview(true);
+    }
+  };
+
+  const handleCancelEditReview = () => {
+    setIsEditingReview(false);
+    setEditRating(0);
+    setEditText('');
+    setEditHoverRating(0);
+  };
+
+  const handleSaveEditReview = async () => {
+    if (!userReview || editRating === 0 || !editText.trim()) return;
+    
+    setIsUpdatingReview(true);
+    try {
+      await updateReview(userReview.id, editRating, editText);
+      setIsEditingReview(false);
+      setReviewRefresh((prev) => prev + 1);
+    } catch (err) {
+      console.error("Error updating review:", err);
+    } finally {
+      setIsUpdatingReview(false);
+    }
+  };
+
+  // Check review eligibility and fetch user's review when logged in
   useEffect(() => {
-    const fetchEligibility = async () => {
+    const fetchEligibilityAndReview = async () => {
       if (!isLoggedIn || !productId) {
         setReviewEligibility(null);
+        setUserReview(null);
         return;
       }
       setEligibilityLoading(true);
       try {
         const eligibility = await checkReviewEligibility(productId);
         setReviewEligibility(eligibility);
+        
+        // If user has already reviewed, fetch their review
+        if (eligibility.hasReviewed && currentUserId) {
+          const reviews = await getReviewsByProduct(productId);
+          const myReview = reviews.find(r => r.userId === currentUserId);
+          setUserReview(myReview || null);
+        } else {
+          setUserReview(null);
+        }
       } catch (err) {
         console.error("Error checking review eligibility:", err);
         setReviewEligibility(null);
+        setUserReview(null);
       } finally {
         setEligibilityLoading(false);
       }
     };
-    fetchEligibility();
-  }, [isLoggedIn, productId, reviewRefresh]);
+    fetchEligibilityAndReview();
+  }, [isLoggedIn, productId, reviewRefresh, currentUserId]);
 
   useEffect(() => {
     const fetchUserStore = async () => {
@@ -435,10 +489,111 @@ export default function ProductDetail({ products = [] }) {
               <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
             </div>
           ) : reviewEligibility?.hasReviewed ? (
-            <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
-              <Star className="mx-auto h-8 w-8 text-emerald-500 fill-emerald-500 mb-2" />
-              <p className="text-sm font-medium text-emerald-500">You've already reviewed this product</p>
-              <p className="text-xs text-muted-foreground mt-1">Thank you for sharing your feedback!</p>
+            <div className={`mb-8 rounded-xl border p-6 ${isEditingReview ? 'border-primary bg-card' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+              {isEditingReview ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-foreground">Edit Your Review</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={handleCancelEditReview}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Edit Rating */}
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-2">Rating</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setEditRating(star)}
+                          onMouseEnter={() => setEditHoverRating(star)}
+                          onMouseLeave={() => setEditHoverRating(0)}
+                          className="p-0.5 transition-transform hover:scale-110 focus:outline-none"
+                        >
+                          <Star
+                            className={`h-7 w-7 transition-colors ${
+                              star <= (editHoverRating || editRating)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'fill-transparent text-zinc-600'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      {(editHoverRating || editRating) > 0 && (
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          {ratingLabels[editHoverRating || editRating]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Edit Text */}
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-2">Review</label>
+                    <textarea
+                      rows={4}
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors resize-none"
+                    />
+                  </div>
+                  
+                  {/* Edit Actions */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEditReview}
+                      disabled={isUpdatingReview}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEditReview}
+                      disabled={isUpdatingReview || editRating === 0 || !editText.trim()}
+                    >
+                      {isUpdatingReview ? (
+                        <>
+                          <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-3 w-3" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* View Mode - Already Reviewed */
+                <div className="text-center">
+                  <Star className="mx-auto h-8 w-8 text-emerald-500 fill-emerald-500 mb-2" />
+                  <p className="text-sm font-medium text-emerald-500">You've already reviewed this product</p>
+                  <p className="text-xs text-muted-foreground mt-1">Thank you for sharing your feedback!</p>
+                  {userReview && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={handleStartEditReview}
+                    >
+                      <Pencil className="mr-2 h-3 w-3" />
+                      Edit Your Review
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ) : !reviewEligibility?.hasPurchased ? (
             <div className="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
