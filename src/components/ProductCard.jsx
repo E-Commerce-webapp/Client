@@ -88,12 +88,14 @@ export default function ProductCard({ product }) {
           </div>
         )}
         
-        <p className="text-xs text-muted-foreground">
-          Sold by:{" "}
-          <span className="font-medium text-primary">
-            {product.seller_name}
-          </span>
-        </p>
+        {(product.storeName || product.seller_name) && (
+          <p className="text-xs text-muted-foreground">
+            Sold by:{" "}
+            <span className="font-medium text-primary">
+              {product.storeName || product.seller_name}
+            </span>
+          </p>
+        )}
         <p className="line-clamp-2 text-xs text-muted-foreground">
           {product.description.length > 80
             ? `${product.description.substring(0, 80)}...`
