@@ -100,6 +100,10 @@ export default function Navbar() {
         } else {
           setUserFullName(null);
         }
+        // Store userId for review ownership checks
+        if (res.data?.id) {
+          localStorage.setItem("userId", res.data.id);
+        }
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem("token");
