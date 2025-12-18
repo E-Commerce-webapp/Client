@@ -4,6 +4,7 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import Navbar from "./components/Navbar";
+import ChatBubble from "./components/ChatBubble";
 import Home from "./pages/Home";
 import Login from "./pages/LoginPage/Login";
 import ProductDetail from "./pages/ProductDetail";
@@ -151,6 +152,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
+        <ChatBubble />
       </NotificationProvider>
     </CartProvider>
   );
