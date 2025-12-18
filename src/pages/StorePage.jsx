@@ -3,7 +3,13 @@ import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Package, MessageCircle, Store, ShoppingBag } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import { MapPin, Phone, Package, MessageCircle, Store, ShoppingBag, Share2, Copy, Check } from 'lucide-react';
 
 export default function StorePage() {
   const { storeId } = useParams();
@@ -12,6 +18,35 @@ export default function StorePage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleShareNative = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: store?.name || 'Check out this store',
+          text: store?.description?.slice(0, 100) || 'Check out this store on EcomSphere',
+          url: shareUrl,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Share failed:', err);
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchStoreData = async () => {
@@ -126,13 +161,43 @@ export default function StorePage() {
                     )}
                   </div>
                   
-                  <Button 
-                    onClick={handleContactSeller}
-                    className="flex items-center gap-2"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Contact Seller
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={handleContactSeller}
+                      className="flex items-center gap-2"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Contact Seller
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9">
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
+                          {copied ? (
+                            <>
+                              <Check className="mr-2 h-4 w-4 text-green-500" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copy Link
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        {typeof navigator !== 'undefined' && navigator.share && (
+                          <DropdownMenuItem onClick={handleShareNative} className="cursor-pointer">
+                            <Share2 className="mr-2 h-4 w-4" />
+                            Share...
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 {/* Store Meta */}

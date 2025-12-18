@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Share2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useCart } from "../contexts/CartContext";
 
 import api from "../utils/api";
@@ -19,8 +25,37 @@ export default function ProductDetail({ products = [] }) {
   const [quantity, setQuantity] = useState(1);
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [userStoreId, setUserStoreId] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem("token");
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleShareNative = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product?.title || product?.name || 'Check out this product',
+          text: product?.description?.slice(0, 100) || 'Check out this product on EcomSphere',
+          url: shareUrl,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Share failed:', err);
+        }
+      }
+    }
+  };
 
   const handleReviewSubmitted = () => setReviewRefresh((prev) => prev + 1);
 
@@ -123,9 +158,39 @@ export default function ProductDetail({ products = [] }) {
         </div>
 
         <div className="w-full md:w-1/2">
-          <h2 className="mb-1 text-2xl font-semibold text-foreground">
-            {product.title || product.name}
-          </h2>
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <h2 className="text-2xl font-semibold text-foreground">
+              {product.title || product.name}
+            </h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
+                  {copied ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4 text-green-500" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Link
+                    </>
+                  )}
+                </DropdownMenuItem>
+                {typeof navigator !== 'undefined' && navigator.share && (
+                  <DropdownMenuItem onClick={handleShareNative} className="cursor-pointer">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share...
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <p className="mb-3 text-sm text-muted-foreground">
             Store:{" "}
