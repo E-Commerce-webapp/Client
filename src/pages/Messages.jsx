@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, Send, ArrowLeft, User } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, User, Check, CheckCheck } from "lucide-react";
 
 export default function Messages() {
   const [searchParams] = useSearchParams();
@@ -281,6 +281,32 @@ export default function Messages() {
                     {messages.map((msg) => {
                       const isOwn = msg.senderId === currentUserId;
                       
+                      const renderMessageStatus = () => {
+                        if (!isOwn) return null;
+                        
+                        const status = msg.status || (msg.isRead ? 'SEEN' : 'SENT');
+                        
+                        if (status === 'SEEN') {
+                          return (
+                            <span className="inline-flex items-center gap-0.5 text-blue-300" title="Seen">
+                              <CheckCheck className="h-3.5 w-3.5" />
+                            </span>
+                          );
+                        } else if (status === 'DELIVERED') {
+                          return (
+                            <span className="inline-flex items-center gap-0.5 text-blue-200" title="Delivered">
+                              <CheckCheck className="h-3.5 w-3.5" />
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="inline-flex items-center gap-0.5 text-blue-200/60" title="Sent">
+                              <Check className="h-3.5 w-3.5" />
+                            </span>
+                          );
+                        }
+                      };
+                      
                       return (
                         <div
                           key={msg.id}
@@ -294,9 +320,12 @@ export default function Messages() {
                             }`}
                           >
                             <p className="text-sm">{msg.content}</p>
-                            <p className={`text-xs mt-1 ${isOwn ? "text-blue-200" : "text-zinc-500"}`}>
-                              {formatTime(msg.createdAt)}
-                            </p>
+                            <div className={`flex items-center gap-1.5 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                              <span className={`text-xs ${isOwn ? "text-blue-200" : "text-zinc-500"}`}>
+                                {formatTime(msg.createdAt)}
+                              </span>
+                              {renderMessageStatus()}
+                            </div>
                           </div>
                         </div>
                       );
