@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ProductCard from "../../components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Camera, ImagePlus } from "lucide-react";
+import { Camera, ImagePlus, Plus } from "lucide-react";
 
 const SellerStore = () => {
+  const navigate = useNavigate();
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -249,11 +251,28 @@ const SellerStore = () => {
         </div>
       </div>
 
-      <h4 className="mb-3 text-lg font-bold text-foreground">Products in this Store</h4>
+      <div className="mb-3 flex items-center justify-between">
+        <h4 className="text-lg font-bold text-foreground">Products in this Store</h4>
+        <Button
+          onClick={() => navigate("/sell")}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add New Product
+        </Button>
+      </div>
 
       {products.length === 0 ? (
-        <div className="rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-700">
-          You have no products in this store yet.
+        <div className="rounded-lg border border-border bg-muted/30 px-6 py-8 text-center">
+          <Plus className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
+          <h3 className="text-lg font-semibold text-foreground mb-1">No Products Yet</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Start selling by adding your first product
+          </p>
+          <Button onClick={() => navigate("/sell")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Your First Product
+          </Button>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
