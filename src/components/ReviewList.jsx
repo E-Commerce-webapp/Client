@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getReviewsByProduct, getAverageRating, deleteReview } from '../api/reviews';
-import { Star, Trash2, User, MessageSquare, AlertCircle } from 'lucide-react';
+import { getReviewsByProduct, getAverageRating, deleteReview, updateReview } from '../api/reviews';
+import { Star, Trash2, User, MessageSquare, AlertCircle, Pencil, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ReviewList({ productId, refreshTrigger }) {
@@ -9,8 +9,16 @@ export default function ReviewList({ productId, refreshTrigger }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  
+  // Edit state
+  const [editingId, setEditingId] = useState(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editHoverRating, setEditHoverRating] = useState(0);
+  const [editText, setEditText] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const currentUserId = localStorage.getItem('userId');
+  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
   const fetchReviews = async () => {
     setIsLoading(true);
@@ -47,6 +55,40 @@ export default function ReviewList({ productId, refreshTrigger }) {
       setError('Failed to delete review');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleStartEdit = (review) => {
+    setEditingId(review.id);
+    setEditRating(review.rating);
+    setEditText(review.reviewText);
+    setEditHoverRating(0);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditRating(0);
+    setEditText('');
+    setEditHoverRating(0);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editRating === 0 || !editText.trim()) {
+      setError('Please provide both rating and review text');
+      return;
+    }
+    
+    setIsUpdating(true);
+    try {
+      await updateReview(editingId, editRating, editText);
+      setEditingId(null);
+      setEditRating(0);
+      setEditText('');
+      fetchReviews();
+    } catch {
+      setError('Failed to update review');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -169,56 +211,159 @@ export default function ReviewList({ productId, refreshTrigger }) {
           {reviews.map((review) => (
             <div 
               key={review.id} 
-              className="rounded-xl border border-border bg-card p-5 transition-colors hover:bg-card/80"
+              className={`rounded-xl border bg-card p-5 transition-colors ${
+                editingId === review.id ? 'border-primary' : 'border-border hover:bg-card/80'
+              }`}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    {review.userName?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
+              {editingId === review.id ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-foreground">Edit Your Review</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                   
-                  <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-semibold text-foreground">
-                        {review.userName || 'Anonymous'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(review.createdAt)}
-                      </span>
+                  {/* Edit Rating */}
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-2">Rating</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setEditRating(star)}
+                          onMouseEnter={() => setEditHoverRating(star)}
+                          onMouseLeave={() => setEditHoverRating(0)}
+                          className="p-0.5 transition-transform hover:scale-110 focus:outline-none"
+                        >
+                          <Star
+                            className={`h-6 w-6 transition-colors ${
+                              star <= (editHoverRating || editRating)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'fill-transparent text-zinc-600'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      {(editHoverRating || editRating) > 0 && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {ratingLabels[editHoverRating || editRating]}
+                        </span>
+                      )}
                     </div>
-                    
-                    {/* Rating */}
-                    <div className="mb-3">
-                      {renderStars(review.rating)}
-                    </div>
-                    
-                    {/* Review Text */}
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {review.reviewText}
-                    </p>
+                  </div>
+                  
+                  {/* Edit Text */}
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-2">Review</label>
+                    <textarea
+                      rows={3}
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors resize-none"
+                    />
+                  </div>
+                  
+                  {/* Edit Actions */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isUpdating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={isUpdating || editRating === 0 || !editText.trim()}
+                    >
+                      {isUpdating ? (
+                        <>
+                          <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-3 w-3" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
+              ) : (
+                /* View Mode */
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {review.userName?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      {/* Header */}
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-foreground">
+                          {review.userName || 'Anonymous'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(review.createdAt)}
+                        </span>
+                        {currentUserId === review.userId && (
+                          <span className="text-xs text-primary font-medium">(Your review)</span>
+                        )}
+                      </div>
+                      
+                      {/* Rating */}
+                      <div className="mb-3">
+                        {renderStars(review.rating)}
+                      </div>
+                      
+                      {/* Review Text */}
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {review.reviewText}
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Delete Button */}
-                {currentUserId === review.userId && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex-shrink-0"
-                    onClick={() => handleDelete(review.id)}
-                    disabled={deletingId === review.id}
-                  >
-                    {deletingId === review.id ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-              </div>
+                  {/* Action Buttons */}
+                  {currentUserId === review.userId && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleStartEdit(review)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        onClick={() => handleDelete(review.id)}
+                        disabled={deletingId === review.id}
+                      >
+                        {deletingId === review.id ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
