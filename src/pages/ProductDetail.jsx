@@ -1,6 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { MessageSquare, Share2, Copy, Check } from "lucide-react";
+import { 
+  MessageSquare, 
+  Share2, 
+  Copy, 
+  Check, 
+  Store, 
+  ShoppingCart, 
+  Package, 
+  Minus, 
+  Plus,
+  ChevronLeft,
+  Star
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -127,195 +139,268 @@ export default function ProductDetail({ products = [] }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground">
-        Loading product...
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-600 border-t-transparent" />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground">
-        Product not found
+      <div className="mx-auto max-w-5xl px-4 py-12">
+        <div className="text-center">
+          <Package className="mx-auto h-16 w-16 text-muted-foreground/30 mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Product Not Found</h2>
+          <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate("/")} variant="outline">
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="flex flex-col gap-8 md:flex-row">
-        <div className="w-full md:w-1/2">
-          <div className="overflow-hidden rounded-xl border border-border bg-muted">
-            <img
-              src={mainImage}
-              alt={product.title || product.name}
-              className="h-full w-full max-h-[480px] object-cover"
-              onError={(e) => {
-                e.currentTarget.src = "/images/placeholder.jpg";
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="w-full md:w-1/2">
-          <div className="mb-1 flex items-start justify-between gap-2">
-            <h2 className="text-2xl font-semibold text-foreground">
-              {product.title || product.name}
-            </h2>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
-                  {copied ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4 text-green-500" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy Link
-                    </>
-                  )}
-                </DropdownMenuItem>
-                {typeof navigator !== 'undefined' && navigator.share && (
-                  <DropdownMenuItem onClick={handleShareNative} className="cursor-pointer">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share...
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <p className="mb-3 text-sm text-muted-foreground">
-            Store:{" "}
-            {product.storeName && product.storeId ? (
-              <button
-                type="button"
-                className="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
-                onClick={() => navigate(`/store/${product.storeId}`)}
-              >
-                {product.storeName}
-              </button>
-            ) : (
-              <span className="text-muted-foreground">Unknown</span>
-            )}
-          </p>
-
-          <h4 className="mb-3 text-xl font-semibold text-foreground">
-            ${Number(product.price || 0).toFixed(2)}
-          </h4>
-
-          <p className="mb-4 text-sm text-muted-foreground">
-            {product.description}
-          </p>
-
-          <div className="mb-4">
-            <label htmlFor="quantity" className="mb-1 block text-sm font-medium text-foreground">
-              Quantity
-            </label>
-
-            <div className="flex max-w-xs items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                disabled={quantity <= 1}
-              >
-                −
-              </Button>
-
-              <input
-                id="quantity"
-                type="number"
-                className="h-9 w-20 rounded-md border border-input bg-background text-center text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
-                value={quantity}
-                onChange={handleQuantityChange}
-                min={1}
-                max={maxStock || 1}
-              />
-
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setQuantity((prev) => Math.min(maxStock || 1, prev + 1))}
-                disabled={maxStock > 0 ? quantity >= maxStock : true}
-              >
-                +
-              </Button>
-            </div>
-          </div>
-
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button
-              className="w-full sm:w-auto"
-              onClick={handleAddToCart}
-              disabled={maxStock <= 0}
-            >
-              Add to Cart
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => navigate("/cart")}
-            >
-              Go to Cart
-            </Button>
-
-            {product.storeId && isLoggedIn && product.storeId !== userStoreId && (
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => navigate(`/messages?storeId=${product.storeId}&productId=${productId}`)}
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Contact Seller
-              </Button>
-            )}
-          </div>
-
-          {product.storeId && !isLoggedIn && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
-                Log in
-              </Link>{" "}
-              to contact the seller.
-            </p>
-          )}
-
-          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
-            <p className="text-muted-foreground">
-              {maxStock > 0 ? `${maxStock} in stock` : "Currently out of stock"}
-            </p>
-          </div>
+    <div className="min-h-screen bg-background">
+      {/* Breadcrumb */}
+      <div className="border-b border-border bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-3">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back
+          </button>
         </div>
       </div>
 
-      <div className="mt-10">
-        <div className="mb-4 border-t border-border pt-6" />
-
-        {isLoggedIn ? (
-          <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
-        ) : (
-          <div className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-            <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
-              Log in
-            </Link>{" "}
-            to write a review.
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Product Image */}
+          <div className="space-y-4">
+            <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
+              <img
+                src={mainImage}
+                alt={product.title || product.name}
+                className="h-full w-full object-cover transition-transform hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.src = "/images/placeholder.jpg";
+                }}
+              />
+              {maxStock <= 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                  <span className="rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white">
+                    Out of Stock
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* Image thumbnails placeholder for future */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {product.images.slice(0, 4).map((img, idx) => (
+                  <div 
+                    key={idx}
+                    className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-muted cursor-pointer hover:border-primary transition-colors"
+                  >
+                    <img src={img} alt="" className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
 
-        <ReviewList productId={productId} refreshTrigger={reviewRefresh} />
+          {/* Product Info */}
+          <div className="flex flex-col">
+            {/* Header */}
+            <div className="mb-6">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                  {product.title || product.name}
+                </h1>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0 rounded-full">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
+                      {copied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4 text-green-500" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copy Link
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    {typeof navigator !== 'undefined' && navigator.share && (
+                      <DropdownMenuItem onClick={handleShareNative} className="cursor-pointer">
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Share...
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Store Link */}
+              {product.storeName && product.storeId && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => navigate(`/store/${product.storeId}`)}
+                >
+                  <Store className="h-4 w-4" />
+                  <span>{product.storeName}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Price */}
+            <div className="mb-6">
+              <div className="text-3xl font-bold text-foreground">
+                ${Number(product.price || 0).toFixed(2)}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  maxStock > 10 
+                    ? 'bg-emerald-500/10 text-emerald-500' 
+                    : maxStock > 0 
+                    ? 'bg-amber-500/10 text-amber-500' 
+                    : 'bg-red-500/10 text-red-500'
+                }`}>
+                  <Package className="h-3.5 w-3.5" />
+                  {maxStock > 0 ? `${maxStock} in stock` : "Out of stock"}
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Description</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Quantity Selector */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Quantity</h3>
+              <div className="inline-flex items-center rounded-lg border border-border bg-muted/30">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-l-lg rounded-r-none"
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <input
+                  id="quantity"
+                  type="number"
+                  className="h-10 w-16 border-x border-border bg-transparent text-center text-sm font-medium text-foreground outline-none"
+                  value={quantity}
+                  onChange={handleQuantityChange}
+                  min={1}
+                  max={maxStock || 1}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-r-lg rounded-l-none"
+                  onClick={() => setQuantity((prev) => Math.min(maxStock || 1, prev + 1))}
+                  disabled={maxStock > 0 ? quantity >= maxStock : true}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleAddToCart}
+                  disabled={maxStock <= 0}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Add to Cart
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navigate("/cart")}
+                >
+                  View Cart
+                </Button>
+              </div>
+
+              {product.storeId && isLoggedIn && product.storeId !== userStoreId && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => navigate(`/messages?storeId=${product.storeId}&productId=${productId}`)}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Contact Seller
+                </Button>
+              )}
+
+              {product.storeId && !isLoggedIn && (
+                <p className="text-center text-sm text-muted-foreground">
+                  <Link to="/login" className="font-medium text-primary hover:underline">
+                    Log in
+                  </Link>{" "}
+                  to contact the seller
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-12 border-t border-border pt-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Star className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Customer Reviews</h2>
+          </div>
+
+          {isLoggedIn ? (
+            <div className="mb-8 rounded-xl border border-border bg-card p-6">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Write a Review</h3>
+              <ReviewForm productId={productId} onReviewSubmitted={handleReviewSubmitted} />
+            </div>
+          ) : (
+            <div className="mb-8 rounded-xl border border-border bg-muted/30 p-6 text-center">
+              <Star className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                <Link to="/login" className="font-medium text-primary hover:underline">
+                  Log in
+                </Link>{" "}
+                to write a review
+              </p>
+            </div>
+          )}
+
+          <ReviewList productId={productId} refreshTrigger={reviewRefresh} />
+        </div>
       </div>
     </div>
   );
