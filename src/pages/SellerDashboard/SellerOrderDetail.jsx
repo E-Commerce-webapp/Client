@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import {
-  Container,
-  Card,
-  Button,
-  Row,
-  Col,
-  Badge,
-  Alert,
-  Spinner,
-  Form,
-  Modal,
-} from "react-bootstrap";
-import {
-  FaArrowLeft,
-  FaPrint,
-  FaMapMarkerAlt,
-  FaCreditCard,
-  FaTruck,
-  FaCheckCircle,
-  FaUser,
-  FaBox,
-  FaEdit,
-} from "react-icons/fa";
 import { getOrderById, updateOrderStatus } from "../../services/orderService";
+import {
+  ArrowLeft,
+  Package,
+  User,
+  MapPin,
+  CreditCard,
+  MessageCircle,
+  Check,
+  Clock,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 
 const SellerOrderDetail = () => {
   const { orderId } = useParams();
@@ -31,9 +22,8 @@ const SellerOrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [newStatus, setNewStatus] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     fetchOrder();
@@ -49,98 +39,70 @@ const SellerOrderDetail = () => {
     try {
       setLoading(true);
       const response = await getOrderById(orderId);
-
       if (response.data) {
         setOrder(response.data);
-        setNewStatus(response.data.status);
       } else {
         setError("Order not found");
       }
     } catch (err) {
       console.error("Error fetching order:", err);
-      setError(
-        err.message || "Failed to load order details. Please try again later."
-      );
+      setError(err.message || "Failed to load order details.");
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusVariant = (status) => {
-    switch (status?.toLowerCase()) {
-      case "delivered":
-        return "success";
-      case "shipped":
-        return "primary";
-      case "processing":
-        return "warning";
-      case "confirmed":
-        return "info";
-      case "cancelled":
-        return "danger";
-      case "pending":
-      default:
-        return "secondary";
-    }
-  };
-
   const formatDate = (dateString) => {
     try {
-      const options = {
+      return new Date(dateString).toLocaleDateString(undefined, {
         year: "numeric",
-        month: "long",
+        month: "short",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      };
-      return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return "Date not available";
+      });
+    } catch {
+      return "N/A";
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const statusConfig = {
+    PENDING: { color: "bg-yellow-500", icon: Clock, label: "Pending" },
+    CONFIRMED: { color: "bg-blue-500", icon: Check, label: "Confirmed" },
+    PROCESSING: { color: "bg-purple-500", icon: Package, label: "Processing" },
+    SHIPPED: { color: "bg-indigo-500", icon: Truck, label: "Shipped" },
+    DELIVERED: { color: "bg-green-500", icon: CheckCircle2, label: "Delivered" },
+    CANCELLED: { color: "bg-red-500", icon: XCircle, label: "Cancelled" },
   };
 
-  const getAvailableStatuses = () => {
-    const allStatuses = [
-      { value: "PENDING", label: "Pending", order: 0 },
-      { value: "CONFIRMED", label: "Confirmed", order: 1 },
-      { value: "PROCESSING", label: "Processing", order: 2 },
-      { value: "SHIPPED", label: "Shipped", order: 3 },
-      { value: "DELIVERED", label: "Delivered", order: 4 },
-    ];
-
+  const getNextStatus = () => {
+    const progression = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"];
     const currentStatus = order?.status?.toUpperCase();
-    const currentIndex = allStatuses.findIndex((s) => s.value === currentStatus);
-
-    // If order is delivered or cancelled, no status changes allowed
-    if (currentStatus === "DELIVERED" || currentStatus === "CANCELLED") {
-      return [{ value: currentStatus, label: currentStatus }];
-    }
-
-    // Only show statuses that come after the current one, plus CANCELLED
-    const forwardStatuses = allStatuses.filter((s) => s.order > currentIndex);
+    const currentIndex = progression.indexOf(currentStatus);
     
-    // Add cancelled as an option (can cancel from any state except delivered)
-    forwardStatuses.push({ value: "CANCELLED", label: "Cancelled", order: 99 });
-
-    return forwardStatuses;
+    if (currentStatus === "DELIVERED" || currentStatus === "CANCELLED") {
+      return null;
+    }
+    
+    if (currentIndex >= 0 && currentIndex < progression.length - 1) {
+      return progression[currentIndex + 1];
+    }
+    return null;
   };
 
-  const handleStatusUpdate = async () => {
-    if (!order || !newStatus) return;
+  const handleStatusUpdate = async (newStatus) => {
+    if (!order || updating) return;
 
     try {
       setUpdating(true);
+      setError("");
       await updateOrderStatus(order.id, newStatus);
-      setShowStatusModal(false);
-      fetchOrder(); // Refresh order data
+      setSuccessMessage(`Order status updated to ${newStatus}`);
+      fetchOrder();
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Error updating order status:", err);
-      alert("Failed to update order status. Please try again.");
+      setError("Failed to update order status. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -148,354 +110,237 @@ const SellerOrderDetail = () => {
 
   if (loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-        <p className="mt-2">Loading order details...</p>
-      </Container>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-400"></div>
+      </div>
     );
   }
 
-  if (error) {
+  if (error && !order) {
     return (
-      <Container className="py-5">
-        <Alert variant="danger">
-          <Alert.Heading>Error Loading Order</Alert.Heading>
+      <div className="p-6">
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg">
           <p>{error}</p>
-          <div className="d-flex gap-2">
-            <Button
-              variant="outline-danger"
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </Button>
-            <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-              <FaArrowLeft className="me-1" /> Back to Orders
-            </Button>
-          </div>
-        </Alert>
-      </Container>
+          <button
+            onClick={() => navigate("/seller/orders")}
+            className="mt-2 text-sm underline hover:no-underline"
+          >
+            Back to Orders
+          </button>
+        </div>
+      </div>
     );
   }
 
-  if (!order) {
-    return (
-      <Container className="py-5 text-center">
-        <Alert variant="warning">
-          <h4>Order Not Found</h4>
-          <p>We couldn't find an order with ID: {orderId}</p>
-          <Button
-            variant="outline-warning"
-            onClick={() => navigate("/seller/orders")}
-          >
-            <FaBox className="me-1" /> View All Orders
-          </Button>
-        </Alert>
-      </Container>
-    );
-  }
+  if (!order) return null;
+
+  const currentStatus = order.status?.toUpperCase();
+  const statusInfo = statusConfig[currentStatus] || statusConfig.PENDING;
+  const StatusIcon = statusInfo.icon;
+  const nextStatus = getNextStatus();
 
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <Button
-          variant="outline-secondary"
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <button
           onClick={() => navigate("/seller/orders")}
+          className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors"
         >
-          <FaArrowLeft className="me-1" /> Back to Customer Orders
-        </Button>
-        <div className="d-print-none">
-          <Button
-            variant="outline-secondary"
-            className="me-2"
-            onClick={handlePrint}
-          >
-            <FaPrint className="me-1" /> Print
-          </Button>
-          <Button variant="primary" onClick={() => {
-            const available = getAvailableStatuses();
-            if (available.length > 0) {
-              setNewStatus(available[0].value);
-            }
-            setShowStatusModal(true);
-          }}>
-            <FaEdit className="me-1" /> Update Status
-          </Button>
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Orders</span>
+        </button>
+        <span className="text-sm text-zinc-500">
+          Order #{order.id?.slice(-8)}
+        </span>
+      </div>
+
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="mb-4 bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg">
+          {successMessage}
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Status Card - Main Action Area */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-full ${statusInfo.color}`}>
+              <StatusIcon className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-zinc-100">
+                {statusInfo.label}
+              </h2>
+              <p className="text-sm text-zinc-500">
+                Last updated: {formatDate(order.updatedAt || order.createdAt)}
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2">
+            {nextStatus && (
+              <button
+                onClick={() => handleStatusUpdate(nextStatus)}
+                disabled={updating}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updating ? "Updating..." : `Mark as ${statusConfig[nextStatus]?.label}`}
+              </button>
+            )}
+            {currentStatus !== "DELIVERED" && currentStatus !== "CANCELLED" && (
+              <button
+                onClick={() => handleStatusUpdate("CANCELLED")}
+                disabled={updating}
+                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/50 rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel Order
+              </button>
+            )}
+            <button
+              onClick={() => navigate(`/messages?receiverId=${order.userId}&orderId=${order.id}`)}
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Message Customer
+            </button>
+          </div>
+        </div>
+
+        {/* Status Progress */}
+        <div className="mt-6 pt-6 border-t border-zinc-800">
+          <div className="flex items-center justify-between">
+            {["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].map((status, index) => {
+              const config = statusConfig[status];
+              const Icon = config.icon;
+              const statusIndex = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].indexOf(currentStatus);
+              const isCompleted = index <= statusIndex && currentStatus !== "CANCELLED";
+              const isCurrent = status === currentStatus;
+
+              return (
+                <React.Fragment key={status}>
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        isCompleted ? config.color : "bg-zinc-800"
+                      } ${isCurrent ? "ring-2 ring-offset-2 ring-offset-zinc-900 ring-blue-500" : ""}`}
+                    >
+                      <Icon className={`h-5 w-5 ${isCompleted ? "text-white" : "text-zinc-500"}`} />
+                    </div>
+                    <span className={`mt-2 text-xs ${isCompleted ? "text-zinc-300" : "text-zinc-600"}`}>
+                      {config.label}
+                    </span>
+                  </div>
+                  {index < 4 && (
+                    <div className={`flex-1 h-1 mx-2 rounded ${index < statusIndex ? "bg-green-500" : "bg-zinc-800"}`} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      <Card className="mb-4 border-0 shadow-sm">
-        <Card.Header className="d-flex justify-content-between align-items-center bg-white">
-          <div>
-            <h4 className="mb-0">Order #{order.id?.slice(-8)}</h4>
-            <small className="text-muted">
-              Placed on {formatDate(order.createdAt)}
-            </small>
+      {/* Info Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Customer */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <User className="h-4 w-4 text-zinc-500" />
+            <h3 className="font-medium text-zinc-300">Customer</h3>
           </div>
-          <Badge
-            bg={getStatusVariant(order.status)}
-            className="fs-6 p-2"
-            style={{ cursor: "pointer" }}
-            onClick={() => {
-              const available = getAvailableStatuses();
-              if (available.length > 0) {
-                setNewStatus(available[0].value);
-              }
-              setShowStatusModal(true);
-            }}
-          >
-            {order.status}
-          </Badge>
-        </Card.Header>
+          <p className="text-zinc-100 font-medium">{order.shippingAddress?.fullName || "N/A"}</p>
+          <p className="text-sm text-zinc-500">{order.shippingAddress?.phoneNumber || "N/A"}</p>
+        </div>
 
-        <Card.Body>
-          {/* Customer & Shipping Info */}
-          <Row className="mb-4">
-            <Col md={4} className="mb-3 mb-md-0">
-              <Card className="h-100 border">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaUser className="me-2" />
-                  <h6 className="mb-0">Customer Information</h6>
-                </Card.Header>
-                <Card.Body>
-                  <div className="mb-2">
-                    <strong>Name:</strong>
-                    <br />
-                    {order.shippingAddress?.fullName || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Contact:</strong>
-                    <br />
-                    {order.shippingAddress?.phoneNumber || "N/A"}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={4} className="mb-3 mb-md-0">
-              <Card className="h-100 border">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaMapMarkerAlt className="me-2" />
-                  <h6 className="mb-0">Shipping Address</h6>
-                </Card.Header>
-                <Card.Body>
-                  <address className="mb-0">
-                    {order.shippingAddress?.addressLine1}
-                    <br />
-                    {order.shippingAddress?.city},{" "}
-                    {order.shippingAddress?.postalCode}
-                    <br />
-                    {order.shippingAddress?.country}
-                  </address>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={4}>
-              <Card className="h-100 border">
-                <Card.Header className="bg-light d-flex align-items-center">
-                  <FaCreditCard className="me-2" />
-                  <h6 className="mb-0">Payment Info</h6>
-                </Card.Header>
-                <Card.Body>
-                  <div className="d-flex align-items-center">
-                    <div className="me-2">
-                      <FaCreditCard size={24} />
-                    </div>
-                    <div>
-                      <div className="fw-bold">{order.paymentMethod}</div>
-                      <div className="text-success">
-                        <FaCheckCircle className="me-1" /> Paid
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Order Items */}
-          <h5 className="mb-3">
-            <FaBox className="me-2" />
-            Order Items
-          </h5>
-          <div className="table-responsive">
-            <table className="table table-hover">
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: "45%" }}>Product</th>
-                  <th className="text-center">Price</th>
-                  <th className="text-center">Quantity</th>
-                  <th className="text-end">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items?.map((item, index) => (
-                  <tr key={index}>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <img
-                          src={item.productImage}
-                          alt={item.productTitle}
-                          style={{
-                            width: "60px",
-                            height: "60px",
-                            objectFit: "cover",
-                            marginRight: "15px",
-                            borderRadius: "4px",
-                          }}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src =
-                              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E";
-                          }}
-                        />
-                        <div>
-                          <Link to={`/products/${item.productId}`} className="fw-bold text-decoration-none text-dark">
-                            {item.productTitle}
-                          </Link>
-                          <br />
-                          <small className="text-muted">
-                            SKU: {item.productId?.slice(-8)}
-                          </small>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="text-center align-middle">
-                      ${item.price?.toFixed(2)}
-                    </td>
-                    <td className="text-center align-middle">{item.quantity}</td>
-                    <td className="text-end align-middle">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="table-light">
-                <tr>
-                  <td colSpan="3" className="text-end">
-                    Subtotal:
-                  </td>
-                  <td className="text-end">${order.subtotal?.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan="3" className="text-end">
-                    Shipping:
-                  </td>
-                  <td className="text-end">${order.shippingCost?.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan="3" className="text-end">
-                    Tax:
-                  </td>
-                  <td className="text-end">${order.taxAmount?.toFixed(2)}</td>
-                </tr>
-                <tr className="fw-bold">
-                  <td colSpan="3" className="text-end">
-                    Total:
-                  </td>
-                  <td className="text-end">${order.totalAmount?.toFixed(2)}</td>
-                </tr>
-              </tfoot>
-            </table>
+        {/* Shipping */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MapPin className="h-4 w-4 text-zinc-500" />
+            <h3 className="font-medium text-zinc-300">Shipping</h3>
           </div>
+          <p className="text-sm text-zinc-400">
+            {order.shippingAddress?.addressLine1}<br />
+            {order.shippingAddress?.city}, {order.shippingAddress?.postalCode}<br />
+            {order.shippingAddress?.country}
+          </p>
+        </div>
 
-          {/* Order Status Timeline */}
-          <Card className="mt-4 border">
-            <Card.Header className="bg-light">
-              <FaTruck className="me-2" />
-              <strong>Order Status</strong>
-            </Card.Header>
-            <Card.Body>
-              <div className="d-flex justify-content-between align-items-center">
-                {["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].map(
-                  (status, index) => {
-                    const currentIndex = [
-                      "PENDING",
-                      "CONFIRMED",
-                      "PROCESSING",
-                      "SHIPPED",
-                      "DELIVERED",
-                    ].indexOf(order.status?.toUpperCase());
-                    const isActive = index <= currentIndex;
-                    const isCurrent = status === order.status?.toUpperCase();
+        {/* Payment */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard className="h-4 w-4 text-zinc-500" />
+            <h3 className="font-medium text-zinc-300">Payment</h3>
+          </div>
+          <p className="text-zinc-100 font-medium">{order.paymentMethod}</p>
+          <p className="text-sm text-green-400 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Paid
+          </p>
+        </div>
+      </div>
 
-                    return (
-                      <div
-                        key={status}
-                        className="text-center"
-                        style={{ flex: 1 }}
-                      >
-                        <div
-                          className={`rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center ${
-                            isActive ? "bg-success text-white" : "bg-light"
-                          }`}
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            border: isCurrent ? "3px solid #198754" : "none",
-                          }}
-                        >
-                          {isActive && <FaCheckCircle />}
-                        </div>
-                        <small
-                          className={isActive ? "fw-bold" : "text-muted"}
-                        >
-                          {status}
-                        </small>
-                      </div>
-                    );
-                  }
-                )}
+      {/* Order Items */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-zinc-800">
+          <h3 className="font-medium text-zinc-200 flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Order Items ({order.items?.length || 0})
+          </h3>
+        </div>
+        <div className="divide-y divide-zinc-800">
+          {order.items?.map((item, index) => (
+            <div key={index} className="p-4 flex items-center gap-4">
+              <img
+                src={item.productImage}
+                alt={item.productTitle}
+                className="w-16 h-16 object-cover rounded-lg bg-zinc-800"
+                onError={(e) => {
+                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect fill='%23333' width='64' height='64'/%3E%3C/svg%3E";
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <Link
+                  to={`/products/${item.productId}`}
+                  className="text-zinc-100 font-medium hover:text-blue-400 transition-colors"
+                >
+                  {item.productTitle}
+                </Link>
+                <p className="text-sm text-zinc-500">Qty: {item.quantity}</p>
               </div>
-            </Card.Body>
-          </Card>
-        </Card.Body>
-      </Card>
-
-      {/* Status Update Modal */}
-      <Modal show={showStatusModal} onHide={() => setShowStatusModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Update Order Status</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>
-            Order: <strong>#{order.id?.slice(-8)}</strong>
-          </p>
-          <p>
-            Customer: <strong>{order.shippingAddress?.fullName}</strong>
-          </p>
-          <Form.Group>
-            <Form.Label>New Status</Form.Label>
-            <Form.Select
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-            >
-              {getAvailableStatuses().map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </Form.Select>
-            <Form.Text className="text-muted">
-              Status can only be moved forward, not backward.
-            </Form.Text>
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowStatusModal(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleStatusUpdate}
-            disabled={updating}
-          >
-            {updating ? "Updating..." : "Update Status"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+              <div className="text-right">
+                <p className="text-zinc-100 font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="text-sm text-zinc-500">${item.price?.toFixed(2)} each</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Totals */}
+        <div className="p-4 bg-zinc-800/50 space-y-2">
+          <div className="flex justify-between text-sm text-zinc-400">
+            <span>Subtotal</span>
+            <span>${order.subtotal?.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-zinc-400">
+            <span>Shipping</span>
+            <span>${order.shippingCost?.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-zinc-400">
+            <span>Tax</span>
+            <span>${order.taxAmount?.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-lg font-semibold text-zinc-100 pt-2 border-t border-zinc-700">
+            <span>Total</span>
+            <span>${order.totalAmount?.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

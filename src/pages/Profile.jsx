@@ -19,7 +19,13 @@ export default function Profile() {
 
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [nameForm, setNameForm] = useState({
+    firstName: "",
+    lastName: "",
+  });
 
   const [shippingForm, setShippingForm] = useState({
     fullName: "",
@@ -75,20 +81,56 @@ export default function Profile() {
     fetchUserData();
   }, [token, navigate, baseUrl]);
 
-  const initials = useMemo(() => {
-    const s = userData?.name || userData?.email || "U";
-    return s.trim().charAt(0).toUpperCase();
+  const fullName = useMemo(() => {
+    if (userData?.firstName || userData?.lastName) {
+      return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+    }
+    return null;
   }, [userData]);
+
+  const initials = useMemo(() => {
+    const s = fullName || userData?.email || "U";
+    return s.trim().charAt(0).toUpperCase();
+  }, [fullName, userData]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
 
+  const openNameModal = () => {
+    setNameForm({
+      firstName: userData?.firstName || "",
+      lastName: userData?.lastName || "",
+    });
+    setShowNameModal(true);
+  };
+
+  const handleSaveName = async () => {
+    setSaving(true);
+    setError("");
+
+    try {
+      const res = await axios.put(
+        `${baseUrl}/users/profile`,
+        { firstName: nameForm.firstName, lastName: nameForm.lastName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setUserData(res.data);
+      setShowNameModal(false);
+    } catch (err) {
+      console.error("Error saving name:", err);
+      setError(err.response?.data?.message || "Failed to save name.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openShippingModal = () => {
     const saved = userData?.savedShippingAddress;
     setShippingForm({
-      fullName: saved?.fullName || userData?.name || "",
+      fullName: saved?.fullName || fullName || "",
       addressLine1: saved?.addressLine1 || "",
       city: saved?.city || "",
       postalCode: saved?.postalCode || "",
@@ -190,7 +232,7 @@ export default function Profile() {
             <div>
               <p className="text-sm text-muted-foreground">Signed in as</p>
               <h3 className="text-lg font-semibold text-foreground">
-                {userData.name || "Unnamed User"}
+                {fullName || "Unnamed User"}
               </h3>
               <p className="text-sm text-muted-foreground">{userData.email}</p>
 
@@ -226,8 +268,13 @@ export default function Profile() {
 
             <div className="mt-3 grid gap-4 text-sm md:grid-cols-2">
               <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">Name</p>
-                <p className="text-foreground">{userData.name || "Not provided"}</p>
+                <div className="flex items-center justify-between">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Name</p>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={openNameModal}>
+                    Edit
+                  </Button>
+                </div>
+                <p className="text-foreground">{fullName || "Not provided"}</p>
               </div>
 
               <div>
@@ -444,6 +491,51 @@ export default function Profile() {
               Cancel
             </Button>
             <Button onClick={handleSavePayment} disabled={saving || !paymentValid}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNameModal} onOpenChange={setShowNameModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Name</DialogTitle>
+            <DialogDescription>
+              Update your first and last name.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">First Name</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={nameForm.firstName}
+                onChange={(e) => setNameForm((p) => ({ ...p, firstName: e.target.value }))}
+                placeholder="John"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Last Name</label>
+              <input
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background focus:border-ring focus:ring-2 focus:ring-ring/40"
+                value={nameForm.lastName}
+                onChange={(e) => setNameForm((p) => ({ ...p, lastName: e.target.value }))}
+                placeholder="Doe"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2 gap-2">
+            <Button variant="outline" onClick={() => setShowNameModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveName} 
+              disabled={saving || (!nameForm.firstName.trim() && !nameForm.lastName.trim())}
+            >
               {saving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

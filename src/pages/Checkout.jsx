@@ -176,7 +176,7 @@ export default function Checkout() {
           item.image || item.images?.[0] || "/images/placeholder.jpg",
         quantity: item.quantity,
         price: parseFloat(item.price),
-        sellerId: item.seller_id || "default-seller",
+        sellerId: item.sellerId || null,
       })),
       shippingAddress: {
         fullName: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -222,9 +222,10 @@ export default function Checkout() {
         }
       );
 
-      const orderId = res.data?.id;
-
-      if (!orderId) {
+      // Server now returns an array of orders (one per seller)
+      const orders = Array.isArray(res.data) ? res.data : [res.data];
+      
+      if (!orders.length || !orders[0]?.id) {
         throw new Error("Order ID not received from server");
       }
 
@@ -235,8 +236,13 @@ export default function Checkout() {
       clearCart();
 
       // Brief delay to show success message, then navigate
+      // If multiple orders, go to orders list; if single order, go to that order
       setTimeout(() => {
-        navigate(`/order-confirmation/${orderId}`);
+        if (orders.length > 1) {
+          navigate(`/orders`);
+        } else {
+          navigate(`/order-confirmation/${orders[0].id}`);
+        }
       }, 1500);
     } catch (err) {
       console.error("Order creation error:", err);

@@ -37,8 +37,8 @@ api.interceptors.response.use(
 
 export const handleApiError = (error) => {
   if (error.response) {
-    // Server responded with an error
-    return error.response.data?.message || 'An error occurred';
+    // Server responded with an error - check both 'message' and 'error' fields
+    return error.response.data?.message || error.response.data?.error || 'An error occurred';
   } else if (error.request) {
     // No response received
     return 'No response from server. Please check your connection.';
