@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import { Button } from "@/components/ui/button";
 import CategorySelect from "./CategorySellect"
@@ -9,16 +10,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Sparkles, Truck, Shield, Tag } from "lucide-react";
 import { getAverageRating } from "../api/reviews";
 
 export default function Home({ products = [], loading }) {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [productRatings, setProductRatings] = useState({});
+  const [currentBanner, setCurrentBanner] = useState(0);
 
   const itemsPerPage = 15;
+
+  // Banner data
+  const banners = [
+    {
+      id: 1,
+      title: "New Arrivals",
+      subtitle: "Discover the latest products",
+      description: "Shop the newest additions to our collection",
+      gradient: "from-blue-600 to-purple-600",
+      icon: Sparkles,
+      action: () => setSortBy("newest"),
+      buttonText: "Shop New",
+    },
+    {
+      id: 2,
+      title: "Free Shipping",
+      subtitle: "On orders over $50",
+      description: "Fast & reliable delivery to your doorstep",
+      gradient: "from-emerald-600 to-teal-600",
+      icon: Truck,
+      action: () => navigate("/"),
+      buttonText: "Learn More",
+    },
+    {
+      id: 3,
+      title: "Best Deals",
+      subtitle: "Up to 50% off",
+      description: "Don't miss out on amazing discounts",
+      gradient: "from-orange-500 to-red-500",
+      icon: Tag,
+      action: () => setSortBy("price-low"),
+      buttonText: "View Deals",
+    },
+  ];
+
+  // Auto-rotate banners
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
+
+  const nextBanner = () => setCurrentBanner((prev) => (prev + 1) % banners.length);
+  const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category))).filter(
@@ -110,6 +158,107 @@ export default function Home({ products = [], loading }) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
+      {/* Banner Carousel */}
+      <div className="relative mb-8 overflow-hidden rounded-2xl">
+        <div 
+          className="flex transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+        >
+          {banners.map((banner) => (
+            <div
+              key={banner.id}
+              className={`min-w-full bg-gradient-to-r ${banner.gradient} p-6 sm:p-8 md:p-10`}
+            >
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <banner.icon className="h-7 w-7 md:h-8 md:w-8 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs md:text-sm font-medium text-white/80 mb-1">{banner.subtitle}</p>
+                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">{banner.title}</h2>
+                    <p className="text-sm md:text-base text-white/80">{banner.description}</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={banner.action}
+                  className="bg-white text-zinc-900 hover:bg-white/90 font-semibold px-6 py-2 rounded-xl shadow-lg"
+                >
+                  {banner.buttonText}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Navigation Arrows */}
+        <button
+          onClick={prevBanner}
+          className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={nextBanner}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+
+        {/* Dots Indicator */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+          {banners.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentBanner(index)}
+              className={`h-2 rounded-full transition-all ${
+                index === currentBanner ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/70'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Feature Badges */}
+      <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+            <Truck className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Free Shipping</p>
+            <p className="text-xs text-muted-foreground">Orders over $50</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+            <Shield className="h-5 w-5 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Secure Payment</p>
+            <p className="text-xs text-muted-foreground">100% Protected</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+            <Tag className="h-5 w-5 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Best Prices</p>
+            <p className="text-xs text-muted-foreground">Guaranteed</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Quality Products</p>
+            <p className="text-xs text-muted-foreground">Top Sellers</p>
+          </div>
+        </div>
+      </div>
+
       <h2 className="mb-6 text-center text-2xl font-semibold tracking-tight text-foreground">
         Products
       </h2>
