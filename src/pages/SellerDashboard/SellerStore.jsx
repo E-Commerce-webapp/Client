@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import ProductCard from "../../components/ProductCard";
+import { Button } from "@/components/ui/button";
+import { Camera, ImagePlus } from "lucide-react";
 
 const SellerStore = () => {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef(null);
+  const coverInputRef = useRef(null);
 
   const token = localStorage.getItem("token");
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
@@ -94,6 +99,38 @@ const SellerStore = () => {
     return normalized.charAt(0) + normalized.slice(1).toLowerCase();
   };
 
+  const handleImageUpload = async (file, type) => {
+    if (!file || !store) return;
+    
+    setUploading(true);
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        
+        // Update store with new image
+        const updateData = type === 'avatar' 
+          ? { avatar: base64 } 
+          : { cover: base64 };
+        
+        const res = await axios.put(
+          `${baseUrl}/stores/${store.id}`,
+          updateData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        setStore(res.data);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(`Error uploading ${type}:`, err);
+      setError(`Failed to upload ${type}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
@@ -133,26 +170,83 @@ const SellerStore = () => {
         )}
       </h2>
 
-      <div className="mb-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 grid gap-4 md:grid-cols-2">
+      <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        {/* Cover Image */}
+        <div 
+          className="relative h-48 cursor-pointer group"
+          style={{
+            background: store.cover 
+              ? `url(${store.cover}) center/cover no-repeat`
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}
+          onClick={() => coverInputRef.current?.click()}
+        >
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="text-white flex items-center gap-2">
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-sm font-medium">Change Cover</span>
+            </div>
+          </div>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleImageUpload(e.target.files?.[0], 'cover')}
+          />
+          
+          {/* Avatar */}
+          <div 
+            className="absolute -bottom-12 left-6 h-24 w-24 rounded-full border-4 border-card cursor-pointer group/avatar overflow-hidden"
+            style={{
+              background: store.avatar 
+                ? `url(${store.avatar}) center/cover no-repeat`
+                : '#374151'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              avatarInputRef.current?.click();
+            }}
+          >
+            {!store.avatar && (
+              <div className="h-full w-full flex items-center justify-center text-3xl font-bold text-zinc-400">
+                {store.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+              <Camera className="h-6 w-6 text-white" />
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageUpload(e.target.files?.[0], 'avatar')}
+            />
+          </div>
+        </div>
+
+        <div className="p-4 pt-16">
+          <div className="mb-3 grid gap-4 md:grid-cols-2">
+            <div>
+              <h4 className="mb-1 text-lg font-bold text-foreground">{store.name}</h4>
+              <div className="text-sm text-muted-foreground">Store ID: {store.id}</div>
+            </div>
+            <div className="md:text-right">
+              <div className="text-sm text-muted-foreground">Phone</div>
+              <div className="font-semibold text-foreground">{store.phoneNumber || "Not provided"}</div>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <div className="mb-1 text-sm text-muted-foreground">Address</div>
+            <div className="text-foreground">{store.address || "Not provided"}</div>
+          </div>
+
           <div>
-            <h4 className="mb-1 text-lg font-bold text-foreground">{store.name}</h4>
-            <div className="text-sm text-muted-foreground">Store ID: {store.id}</div>
+            <div className="mb-1 text-sm text-muted-foreground">Description</div>
+            <div className="text-foreground">{store.description || "No description provided."}</div>
           </div>
-          <div className="md:text-right">
-            <div className="text-sm text-muted-foreground">Phone</div>
-            <div className="font-semibold text-foreground">{store.phoneNumber || "Not provided"}</div>
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <div className="mb-1 text-sm text-muted-foreground">Address</div>
-          <div className="text-foreground">{store.address || "Not provided"}</div>
-        </div>
-
-        <div>
-          <div className="mb-1 text-sm text-muted-foreground">Description</div>
-          <div className="text-foreground">{store.description || "No description provided."}</div>
         </div>
       </div>
 

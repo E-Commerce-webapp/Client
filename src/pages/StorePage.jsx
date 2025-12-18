@@ -68,9 +68,45 @@ export default function StorePage() {
 
   return (
     <div className="container mt-4">
-      {/* Store Header */}
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body">
+      {/* Store Header with Cover */}
+      <div className="card mb-4 shadow-sm overflow-hidden">
+        {/* Cover Image */}
+        <div 
+          className="position-relative"
+          style={{
+            height: '200px',
+            background: store.cover 
+              ? `url(${store.cover}) center/cover no-repeat`
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}
+        >
+          {/* Avatar */}
+          <div 
+            className="position-absolute"
+            style={{
+              bottom: '-40px',
+              left: '24px',
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              border: '4px solid white',
+              background: store.avatar 
+                ? `url(${store.avatar}) center/cover no-repeat`
+                : '#e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              color: '#6b7280',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}
+          >
+            {!store.avatar && store.name?.charAt(0).toUpperCase()}
+          </div>
+        </div>
+        
+        <div className="card-body" style={{ paddingTop: '50px' }}>
           <h2 className="card-title fw-bold">{store.name}</h2>
           {store.description && (
             <p className="card-text text-muted">{store.description}</p>
