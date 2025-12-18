@@ -31,20 +31,57 @@ import {
 
 export default function Navbar() {
   const { cartCount } = useCart();
-  const token = localStorage.getItem("token");
-  const loggedIn = token && isTokenValid(token);
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  
+  // Use state for token to make it reactive
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [isASeller, setIsASeller] = useState(null);
   const [userFullName, setUserFullName] = useState(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
+  // Compute loggedIn from token state
+  const loggedIn = token && isTokenValid(token);
+
+  // Listen for storage changes (logout from other tabs) and re-check token periodically
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const currentToken = localStorage.getItem("token");
+      setToken(currentToken);
+      if (!currentToken) {
+        // Clear all user-related state when token is removed
+        setIsASeller(null);
+        setUserFullName(null);
+        setUnreadMessageCount(0);
+        setNotifications([]);
+        setUnreadNotificationCount(0);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Also check on focus in case logout happened in same tab
+    const handleFocus = () => {
+      const currentToken = localStorage.getItem("token");
+      if (currentToken !== token) {
+        handleStorageChange();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [token]);
+
   useEffect(() => {
     const fetchSellerStatus = async () => {
       if (!loggedIn) {
         setIsASeller(null);
+        setUserFullName(null);
         return;
       }
 
@@ -55,10 +92,13 @@ export default function Navbar() {
         setIsASeller(!!res.data?.isASeller);
         if (res.data?.firstName || res.data?.lastName) {
           setUserFullName(`${res.data.firstName || ''} ${res.data.lastName || ''}`.trim());
+        } else {
+          setUserFullName(null);
         }
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem("token");
+          setToken(null);
         }
         setIsASeller(null);
         setUserFullName(null);
@@ -189,6 +229,15 @@ export default function Navbar() {
   }, [token, userFullName]);
 
   const handleLogout = () => {
+    // Clear all state immediately
+    setToken(null);
+    setIsASeller(null);
+    setUserFullName(null);
+    setUnreadMessageCount(0);
+    setNotifications([]);
+    setUnreadNotificationCount(0);
+    
+    // Remove token from storage
     localStorage.removeItem("token");
     navigate("/login");
   };
