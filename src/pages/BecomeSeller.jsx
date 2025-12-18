@@ -174,7 +174,7 @@ const BecomeSeller = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+    <div className="fixed inset-0 top-[64px] bg-zinc-950 overflow-auto">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-transparent"></div>
