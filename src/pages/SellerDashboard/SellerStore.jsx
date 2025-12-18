@@ -103,29 +103,28 @@ const SellerStore = () => {
     if (!file || !store) return;
     
     setUploading(true);
+    setError("");
+    
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result;
-        
-        // Update store with new image
-        const updateData = type === 'avatar' 
-          ? { avatar: base64 } 
-          : { cover: base64 };
-        
-        const res = await axios.put(
-          `${baseUrl}/stores/${store.id}`,
-          updateData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        setStore(res.data);
-      };
-      reader.readAsDataURL(file);
+      // Upload to Cloudinary via server endpoint
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const endpoint = type === 'avatar' 
+        ? `${baseUrl}/stores/${store.id}/avatar`
+        : `${baseUrl}/stores/${store.id}/cover`;
+      
+      const res = await axios.post(endpoint, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      
+      setStore(res.data);
     } catch (err) {
       console.error(`Error uploading ${type}:`, err);
-      setError(`Failed to upload ${type}`);
+      setError(`Failed to upload ${type}: ${err.response?.data?.message || err.message}`);
     } finally {
       setUploading(false);
     }
