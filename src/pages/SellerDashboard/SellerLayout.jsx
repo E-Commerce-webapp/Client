@@ -26,7 +26,7 @@ export default function SellerLayout({ children }) {
   const navItems = [
     { to: "/profile", label: "Profile", icon: User },
     { to: "/orders", label: "My Orders", icon: ShoppingBag },
-    { to: "/seller/store", label: "Store", icon: Store },
+    { to: "/seller/store", label: "My Store", icon: Store },
     { to: "/seller/orders", label: "Customer Orders", icon: ClipboardList },
     { to: "/seller", label: "Seller Hub", icon: LayoutDashboard, end: true },
     { to: "/seller/kyc", label: "Store Setup", icon: FileText },
