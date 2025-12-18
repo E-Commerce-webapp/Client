@@ -17,13 +17,40 @@ export default function ChatBubble() {
   const [sending, setSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-  const token = localStorage.getItem("token");
-
-  // Don't render if not logged in
-  if (!token) return null;
+  // Listen for storage changes (login/logout)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setToken(localStorage.getItem("token"));
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Also check periodically for same-tab changes
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem("token");
+      if (currentToken !== token) {
+        setToken(currentToken);
+      }
+    }, 1000);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [token]);
 
   useEffect(() => {
+    if (!token) {
+      setCurrentUserId(null);
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages([]);
+      setUnreadCount(0);
+      return;
+    }
+    
     const fetchCurrentUser = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users`, {
@@ -63,6 +90,8 @@ export default function ChatBubble() {
 
   // Fetch unread count periodically
   useEffect(() => {
+    if (!token) return;
+    
     const fetchUnread = async () => {
       try {
         const data = await getConversations();
@@ -76,7 +105,7 @@ export default function ChatBubble() {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   const fetchConversations = async () => {
     try {
@@ -143,6 +172,9 @@ export default function ChatBubble() {
     if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
+
+  // Don't render if not logged in (after all hooks)
+  if (!token) return null;
 
   return (
     <>
