@@ -250,71 +250,6 @@ export default function Navbar() {
             </div>
           </NavLink>
 
-          {loggedIn && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="relative inline-flex items-center rounded-full px-2 text-zinc-300 cursor-pointer hover:bg-zinc-800/70 hover:text-zinc-50 transition-colors"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadNotificationCount > 0 && (
-                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-80 border-zinc-700 bg-zinc-900 text-zinc-100 max-h-96 overflow-y-auto"
-              >
-                <div className="flex items-center justify-between px-3 py-2">
-                  <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
-                  {unreadNotificationCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                    >
-                      <Check className="h-3 w-3" />
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                {notifications.length === 0 ? (
-                  <div className="px-3 py-6 text-center text-zinc-500 text-sm">
-                    No notifications yet
-                  </div>
-                ) : (
-                  notifications.map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification)}
-                      className={`cursor-pointer flex flex-col items-start gap-1 px-3 py-2 ${
-                        !notification.isRead ? "bg-zinc-800/50" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-2 w-full">
-                        {!notification.isRead && (
-                          <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
-                        )}
-                        <div className={`flex-1 ${notification.isRead ? "ml-4" : ""}`}>
-                          <p className="font-medium text-sm text-zinc-100">{notification.title}</p>
-                          <p className="text-xs text-zinc-400 line-clamp-2">{notification.message}</p>
-                          <p className="text-xs text-zinc-500 mt-1">
-                            {formatNotificationTime(notification.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -389,6 +324,71 @@ export default function Navbar() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {loggedIn && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative inline-flex items-center rounded-full px-2 text-zinc-300 cursor-pointer hover:bg-zinc-800/70 hover:text-zinc-50 transition-colors"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-80 border-zinc-700 bg-zinc-900 text-zinc-100 max-h-96 overflow-y-auto"
+              >
+                <div className="flex items-center justify-between px-3 py-2">
+                  <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                  {unreadNotificationCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Check className="h-3 w-3" />
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                {notifications.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-zinc-500 text-sm">
+                    No notifications yet
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={`cursor-pointer flex flex-col items-start gap-1 px-3 py-2 ${
+                        !notification.isRead ? "bg-zinc-800/50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        {!notification.isRead && (
+                          <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        )}
+                        <div className={`flex-1 ${notification.isRead ? "ml-4" : ""}`}>
+                          <p className="font-medium text-sm text-zinc-100">{notification.title}</p>
+                          <p className="text-xs text-zinc-400 line-clamp-2">{notification.message}</p>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {formatNotificationTime(notification.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
